@@ -1,6 +1,6 @@
 {
   "name": "local-gearbox",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "LocalGearbox - 100% client-side, privacy-first developer tools platform with 80+ utilities. Zero telemetry, zero server APIs, complete privacy.",
   "private": true,
   "type": "module",
