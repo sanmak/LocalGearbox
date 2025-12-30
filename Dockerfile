@@ -2,7 +2,7 @@
 # Supports multi-platform builds: linux/amd64, linux/arm64
 
 # Stage 1: Builder
-FROM --platform=$BUILDPLATFORM node:24-alpine AS builder
+FROM --platform=$BUILDPLATFORM node:25-alpine AS builder
 
 # Build arguments for multi-platform support
 ARG BUILDPLATFORM
@@ -25,7 +25,7 @@ COPY . .
 RUN npm run build
 
 # Stage 2: Production runtime (serve static files)
-FROM --platform=$TARGETPLATFORM node:24-alpine
+FROM --platform=$TARGETPLATFORM node:25-alpine
 
 WORKDIR /app
 
