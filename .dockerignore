@@ -1,0 +1,60 @@
+# Dependencies
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Next.js build outputs
+.next
+out
+dist
+
+# Testing
+coverage
+.nyc_output
+test-results
+playwright-report
+*.test.ts
+*.spec.ts
+*.test.tsx
+*.spec.tsx
+tests
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.DS_Store
+.opencode
+
+# Git
+.git
+.gitignore
+.gitattributes
+.github
+
+# Documentation
+*.md
+!README.md
+docs
+
+# Husky
+.husky
+
+# Claude
+.claude
+
+# Misc
+Dockerfile
+.dockerignore
+docker-compose.yml

@@ -1,0 +1,124 @@
+name: Feature Request
+description: Suggest a new tool or feature for LocalGearbox
+title: '[Feature]: '
+labels: ['enhancement', 'needs-triage']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for your interest in improving LocalGearbox! Please describe the feature you'd like to see.
+
+  - type: dropdown
+    id: type
+    attributes:
+      label: Feature Type
+      description: What type of feature are you requesting?
+      options:
+        - New Tool
+        - Enhancement to Existing Tool
+        - UI/UX Improvement
+        - Performance Improvement
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: Is your feature request related to a problem? Please describe.
+      placeholder: I'm frustrated when...
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: Describe the solution you'd like to see
+      placeholder: I would like to see...
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Describe any alternative solutions or features you've considered
+      placeholder: I also thought about...
+    validations:
+      required: false
+
+  - type: textarea
+    id: examples
+    attributes:
+      label: Examples
+      description: Are there similar tools or features in other applications? Please provide examples or links
+      placeholder: Similar to [tool name] which does...
+    validations:
+      required: false
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Tool Category (if applicable)
+      description: If requesting a new tool, which category would it fit in?
+      options:
+        - Formatters
+        - Validators
+        - Encoders/Decoders
+        - Crypto
+        - Generators
+        - Converters
+        - Network Tools
+        - Text Tools
+        - Minifiers
+        - Workbenches
+        - Other
+    validations:
+      required: false
+
+  - type: textarea
+    id: use-case
+    attributes:
+      label: Use Case
+      description: Describe how you would use this feature in your workflow
+      placeholder: I would use this when...
+    validations:
+      required: false
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority (from your perspective)
+      description: How important is this feature to you?
+      options:
+        - Nice to have
+        - Would be helpful
+        - Important
+        - Critical
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Add any other context, mockups, or screenshots about the feature request
+      placeholder: Any additional information...
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Checklist
+      description: Please confirm the following
+      options:
+        - label: I have searched existing issues to ensure this feature hasn't been requested before
+          required: true
+        - label: This feature aligns with LocalGearbox's privacy-first, client-side only architecture
+          required: true
+        - label: I would be willing to contribute to implementing this feature
+          required: false

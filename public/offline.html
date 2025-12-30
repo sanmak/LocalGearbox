@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Offline - LocalGearbox</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+          'Helvetica Neue', Arial, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        padding: 20px;
+      }
+      .container {
+        text-align: center;
+        max-width: 500px;
+      }
+      h1 {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        font-weight: 700;
+      }
+      p {
+        font-size: 1.25rem;
+        margin-bottom: 2rem;
+        opacity: 0.9;
+        line-height: 1.6;
+      }
+      .icon {
+        font-size: 5rem;
+        margin-bottom: 2rem;
+        opacity: 0.8;
+      }
+      button {
+        background: rgba(255, 255, 255, 0.2);
+        border: 2px solid rgba(255, 255, 255, 0.5);
+        color: #fff;
+        padding: 12px 32px;
+        font-size: 1rem;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-weight: 600;
+      }
+      button:hover {
+        background: rgba(255, 255, 255, 0.3);
+        border-color: rgba(255, 255, 255, 0.8);
+        transform: translateY(-2px);
+      }
+      .feature-list {
+        margin-top: 2rem;
+        text-align: left;
+        background: rgba(255, 255, 255, 0.1);
+        padding: 1.5rem;
+        border-radius: 8px;
+      }
+      .feature-list h2 {
+        font-size: 1.25rem;
+        margin-bottom: 1rem;
+      }
+      .feature-list ul {
+        list-style: none;
+      }
+      .feature-list li {
+        padding: 0.5rem 0;
+        opacity: 0.9;
+      }
+      .feature-list li::before {
+        content: '✓ ';
+        font-weight: bold;
+        margin-right: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="icon">📡</div>
+      <h1>You're Offline</h1>
+      <p>
+        LocalGearbox is designed to work offline after the initial load. It
+        looks like you haven't loaded the app while online yet.
+      </p>
+      <button onclick="location.reload()">Retry Connection</button>
+
+      <div class="feature-list">
+        <h2>When online, LocalGearbox offers:</h2>
+        <ul>
+          <li>75+ developer tools that run locally</li>
+          <li>Zero tracking - complete privacy</li>
+          <li>API client with collections</li>
+          <li>JSON, XML, YAML formatting</li>
+          <li>Networking utilities</li>
+          <li>All data stored locally on your device</li>
+        </ul>
+      </div>
+    </div>
+  </body>
+</html>

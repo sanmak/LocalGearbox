@@ -1,0 +1,27 @@
+{
+  "name": "LocalGearbox - Enterprise-Grade Developer Tools",
+  "short_name": "LocalGearbox",
+  "description": "Secure, privacy-first, local-only developer utilities. JSON tools, API client, networking utilities, and more.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#000000",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["development", "productivity", "utilities"],
+  "screenshots": [],
+  "prefer_related_applications": false
+}

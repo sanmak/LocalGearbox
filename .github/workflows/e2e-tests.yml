@@ -1,0 +1,240 @@
+name: E2E Tests
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # Smoke tests - run on every commit
+  smoke-tests:
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        browser: [chromium]
+
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps ${{ matrix.browser }}
+
+      - name: Build application
+        run: npm run build
+
+      - name: Run smoke tests
+        run: npx playwright test tests/e2e/specs/smoke --project=${{ matrix.browser }}
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
+        with:
+          name: smoke-test-results-${{ matrix.browser }}
+          path: test-results/
+          retention-days: 7
+
+  # Full E2E tests - run on main branches and PRs
+  e2e-tests:
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+        shard: [1/4, 2/4, 3/4, 4/4]
+
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps ${{ matrix.browser }}
+
+      - name: Build application
+        run: npm run build
+
+      - name: Run E2E tests
+        run: npx playwright test --project=${{ matrix.browser }} --shard=${{ matrix.shard }}
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
+        with:
+          name: e2e-results-${{ matrix.browser }}-${{ matrix.shard }}
+          path: test-results/
+          retention-days: 30
+
+      - name: Upload HTML report
+        if: always()
+        uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
+        with:
+          name: playwright-report-${{ matrix.browser }}-${{ matrix.shard }}
+          path: playwright-report/
+          retention-days: 30
+
+  # Accessibility tests
+  accessibility-tests:
+    timeout-minutes: 20
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Build application
+        run: npm run build
+
+      - name: Run accessibility tests
+        run: npx playwright test tests/e2e/specs/accessibility --project=chromium
+
+      - name: Upload accessibility results
+        if: always()
+        uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
+        with:
+          name: accessibility-results
+          path: test-results/
+          retention-days: 30
+
+  # Visual regression tests
+  visual-regression:
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Build application
+        run: npm run build
+
+      - name: Run visual regression tests
+        run: npx playwright test tests/e2e/specs/visual --project=chromium --update-snapshots
+        continue-on-error: true
+
+      - name: Upload visual test results
+        if: always()
+        uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
+        with:
+          name: visual-regression-results
+          path: |
+            test-results/
+            tests/e2e/specs/visual/*.png
+          retention-days: 30
+
+  # Mobile tests
+  mobile-tests:
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        device: [mobile-chrome, mobile-safari, tablet]
+
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps
+
+      - name: Build application
+        run: npm run build
+
+      - name: Run mobile tests
+        run: npx playwright test --project=${{ matrix.device }}
+
+      - name: Upload mobile test results
+        if: always()
+        uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
+        with:
+          name: mobile-results-${{ matrix.device }}
+          path: test-results/
+          retention-days: 30
+
+  # Merge test results
+  merge-results:
+    if: always()
+    needs: [smoke-tests, e2e-tests, accessibility-tests, mobile-tests]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/download-artifact@65a9edc5881444af0b9093a5e628f2fe47ea3b2e # v4.1.7
+        with:
+          path: all-test-results
+
+      - name: Merge test results
+        run: |
+          mkdir -p merged-results
+          find all-test-results -name "*.json" -exec cp {} merged-results/ \;
+
+      - name: Upload merged results
+        uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
+        with:
+          name: merged-test-results
+          path: merged-results/
+          retention-days: 30
+
+  # Test report
+  test-report:
+    if: always()
+    needs: [merge-results]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - uses: actions/download-artifact@65a9edc5881444af0b9093a5e628f2fe47ea3b2e # v4.1.7
+        with:
+          name: merged-test-results
+          path: test-results
+
+      - name: Generate test report
+        run: |
+          echo "# Test Results Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Tests completed. Check artifacts for detailed results." >> $GITHUB_STEP_SUMMARY

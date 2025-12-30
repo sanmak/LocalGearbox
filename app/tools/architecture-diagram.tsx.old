@@ -1,0 +1,645 @@
+/*
+ * Copyright (c) 2025 LocalGearbox. All rights reserved.
+ * Licensed under the MIT License. See LICENSE file in the project root for details.
+ */
+
+"use client";
+
+/**
+ * Architecture Diagram Generator
+ * Professional architecture diagram generation for system design
+ */
+
+import { useCallback, useState, useRef, useEffect } from "react";
+import { processArchitectureDiagram } from "@/lib/tools";
+import CodeHighlighter from "@/components/CodeHighlighter";
+import { UploadIcon, LinkIcon } from "@/components/json";
+import { UrlLoaderModal } from "@/components/UrlLoaderModal";
+
+const SAMPLE_CONFIG = `{
+  "action": "generate",
+  "format": "all",
+  "generateSummary": true,
+  "config": {
+    "title": "Microservices Architecture Example",
+    "description": "Modern microservices with API gateway",
+    "layout": "hierarchical",
+    "style": "modern",
+    "theme": "light",
+    "legend": true,
+    "components": [
+      {
+        "id": "user",
+        "type": "user",
+        "label": "Client App",
+        "layer": 0
+      },
+      {
+        "id": "api-gateway",
+        "type": "gateway",
+        "label": "API Gateway",
+        "layer": 1
+      },
+      {
+        "id": "auth-service",
+        "type": "api",
+        "label": "Auth Service",
+        "layer": 2
+      },
+      {
+        "id": "user-service",
+        "type": "api",
+        "label": "User Service",
+        "layer": 2
+      },
+      {
+        "id": "cache",
+        "type": "cache",
+        "label": "Redis",
+        "layer": 3
+      },
+      {
+        "id": "database",
+        "type": "database",
+        "label": "PostgreSQL",
+        "layer": 3
+      }
+    ],
+    "connections": [
+      {
+        "id": "c1",
+        "from": "user",
+        "to": "api-gateway",
+        "type": "https",
+        "label": "HTTPS"
+      },
+      {
+        "id": "c2",
+        "from": "api-gateway",
+        "to": "auth-service",
+        "type": "grpc"
+      },
+      {
+        "id": "c3",
+        "from": "api-gateway",
+        "to": "user-service",
+        "type": "grpc"
+      },
+      {
+        "id": "c4",
+        "from": "user-service",
+        "to": "cache",
+        "type": "tcp"
+      },
+      {
+        "id": "c5",
+        "from": "user-service",
+        "to": "database",
+        "type": "database"
+      }
+    ]
+  }
+}`;
+
+export default function ArchitectureDiagramPage() {
+  const [input, setInput] = useState("");
+  const [output, setOutput] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [showUrlModal, setShowUrlModal] = useState(false);
+  const [activeTab, setActiveTab] = useState<"svg" | "mermaid" | "plantuml" | "json">("svg");
+  const [templates, setTemplates] = useState<any[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Load templates on mount
+  useEffect(() => {
+    const loadTemplates = async () => {
+      try {
+        const result = await processArchitectureDiagram(
+          JSON.stringify({ action: "list-templates" })
+        );
+        const parsed = JSON.parse(result);
+        setTemplates(parsed.templates || []);
+      } catch (err) {
+        console.error("Failed to load templates:", err);
+      }
+    };
+    loadTemplates();
+  }, []);
+
+  // Auto-process on input change
+  useEffect(() => {
+    if (!input.trim()) {
+      setOutput("");
+      setError(null);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const result = await processArchitectureDiagram(input);
+        setOutput(result);
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error ? err.message : "Processing failed";
+        setError(errorMessage);
+        setOutput("");
+      } finally {
+        setLoading(false);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [input]);
+
+  const handleFileUpload = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const content = e.target?.result as string;
+        setInput(content);
+      };
+      reader.readAsText(file);
+    },
+    []
+  );
+
+  const handleSampleLoad = useCallback(() => {
+    setInput(SAMPLE_CONFIG);
+  }, []);
+
+  const handleTemplateLoad = useCallback(async (templateId: string) => {
+    try {
+      const result = await processArchitectureDiagram(
+        JSON.stringify({ action: "load-template", templateId })
+      );
+      const parsed = JSON.parse(result);
+
+      const fullConfig = {
+        action: "generate",
+        format: "all",
+        generateSummary: true,
+        config: parsed.config,
+      };
+
+      setInput(JSON.stringify(fullConfig, null, 2));
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to load template";
+      setError(errorMessage);
+    }
+  }, []);
+
+  const handleUrlLoad = useCallback(() => {
+    setShowUrlModal(true);
+  }, []);
+
+  const handleClear = useCallback(() => {
+    setInput("");
+    setOutput("");
+    setError(null);
+  }, []);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        handleClear();
+      }
+    },
+    [handleClear]
+  );
+
+  const handleCopy = useCallback((text: string) => {
+    navigator.clipboard.writeText(text);
+  }, []);
+
+  const handleDownload = useCallback((content: string, filename: string) => {
+    const blob = new Blob([content], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, []);
+
+  // Parse output to extract different formats
+  const parsedOutput = output
+    ? (() => {
+        try {
+          return JSON.parse(output);
+        } catch {
+          return null;
+        }
+      })()
+    : null;
+
+  const diagramData = parsedOutput?.success ? parsedOutput.output : null;
+
+  return (
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      {/* Header */}
+      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+        <div className="max-w-7xl mx-auto px-4 py-6">
+          <div className="text-center">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+              Architecture Diagram Generator
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400 max-w-3xl mx-auto">
+              Professional architecture diagram generation for system design. Create stunning
+              diagrams with multiple layouts, cloud service icons, and export to SVG, Mermaid,
+              or PlantUML.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Input Panel */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Configuration
+                </h2>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleSampleLoad}
+                    className="flex items-center gap-1 px-3 py-1.5 text-sm bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded transition-colors"
+                    title="Load sample configuration"
+                  >
+                    Sample
+                  </button>
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex items-center gap-1 px-3 py-1.5 text-sm bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded transition-colors"
+                    title="Upload JSON file"
+                  >
+                    <UploadIcon />
+                    Upload
+                  </button>
+                  <button
+                    onClick={handleUrlLoad}
+                    className="flex items-center gap-1 px-3 py-1.5 text-sm bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded transition-colors"
+                    title="Load from URL"
+                  >
+                    <LinkIcon />
+                    URL
+                  </button>
+                  <button
+                    onClick={handleClear}
+                    className="px-3 py-1.5 text-sm bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded transition-colors"
+                    title="Clear (⌘K)"
+                  >
+                    Clear
+                  </button>
+                </div>
+              </div>
+
+              {/* Templates */}
+              {templates.length > 0 && (
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Load Template
+                  </label>
+                  <select
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        handleTemplateLoad(e.target.value);
+                      }
+                    }}
+                    className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    defaultValue=""
+                  >
+                    <option value="">Select a template...</option>
+                    {templates.map((template) => (
+                      <option key={template.id} value={template.id}>
+                        {template.title}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+
+            <div className="relative">
+              <textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder='{"action": "generate", "config": {...}}'
+                className="w-full h-[600px] p-4 font-mono text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 resize-none focus:outline-none"
+                spellCheck={false}
+              />
+              <div className="absolute bottom-4 right-4 text-xs text-gray-400">
+                {input.length.toLocaleString()} characters
+              </div>
+            </div>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".json,.txt"
+              onChange={handleFileUpload}
+              className="hidden"
+            />
+          </div>
+
+          {/* Output Panel */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Output
+                </h2>
+                {diagramData && (
+                  <div className="flex items-center gap-2">
+                    {diagramData.svg && (
+                      <button
+                        onClick={() => handleDownload(diagramData.svg, "diagram.svg")}
+                        className="px-3 py-1.5 text-sm bg-blue-500 hover:bg-blue-600 text-white rounded transition-colors"
+                      >
+                        Download SVG
+                      </button>
+                    )}
+                    {diagramData.mermaid && (
+                      <button
+                        onClick={() =>
+                          handleDownload(diagramData.mermaid, "diagram.mmd")
+                        }
+                        className="px-3 py-1.5 text-sm bg-green-500 hover:bg-green-600 text-white rounded transition-colors"
+                      >
+                        Download Mermaid
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Tabs */}
+              {diagramData && (
+                <div className="flex gap-2 border-b border-gray-200 dark:border-gray-700 -mb-px">
+                  {diagramData.svg && (
+                    <button
+                      onClick={() => setActiveTab("svg")}
+                      className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                        activeTab === "svg"
+                          ? "border-blue-500 text-blue-600 dark:text-blue-400"
+                          : "border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                      }`}
+                    >
+                      SVG Preview
+                    </button>
+                  )}
+                  {diagramData.mermaid && (
+                    <button
+                      onClick={() => setActiveTab("mermaid")}
+                      className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                        activeTab === "mermaid"
+                          ? "border-blue-500 text-blue-600 dark:text-blue-400"
+                          : "border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                      }`}
+                    >
+                      Mermaid
+                    </button>
+                  )}
+                  {diagramData.plantuml && (
+                    <button
+                      onClick={() => setActiveTab("plantuml")}
+                      className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                        activeTab === "plantuml"
+                          ? "border-blue-500 text-blue-600 dark:text-blue-400"
+                          : "border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                      }`}
+                    >
+                      PlantUML
+                    </button>
+                  )}
+                  {diagramData.json && (
+                    <button
+                      onClick={() => setActiveTab("json")}
+                      className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                        activeTab === "json"
+                          ? "border-blue-500 text-blue-600 dark:text-blue-400"
+                          : "border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                      }`}
+                    >
+                      JSON
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="relative h-[600px] overflow-auto">
+              {loading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-white dark:bg-gray-900 bg-opacity-75">
+                  <div className="text-center">
+                    <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                    <p className="text-gray-600 dark:text-gray-400">
+                      Generating diagram...
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {error && (
+                <div className="p-4">
+                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+                    <div className="flex items-start gap-3">
+                      <svg
+                        className="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                      </svg>
+                      <div className="flex-1">
+                        <h3 className="text-sm font-medium text-red-800 dark:text-red-300 mb-1">
+                          Error
+                        </h3>
+                        <p className="text-sm text-red-700 dark:text-red-400">
+                          {error}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {!loading && !error && diagramData && (
+                <div className="p-4">
+                  {activeTab === "svg" && diagramData.svg && (
+                    <div
+                      className="bg-white dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 overflow-auto"
+                      dangerouslySetInnerHTML={{ __html: diagramData.svg }}
+                    />
+                  )}
+
+                  {activeTab === "mermaid" && diagramData.mermaid && (
+                    <div className="relative">
+                      <button
+                        onClick={() => handleCopy(diagramData.mermaid)}
+                        className="absolute top-2 right-2 px-3 py-1.5 text-sm bg-gray-700 hover:bg-gray-600 text-white rounded transition-colors"
+                      >
+                        Copy
+                      </button>
+                      <CodeHighlighter
+                        code={diagramData.mermaid}
+                        language="mermaid"
+                      />
+                    </div>
+                  )}
+
+                  {activeTab === "plantuml" && diagramData.plantuml && (
+                    <div className="relative">
+                      <button
+                        onClick={() => handleCopy(diagramData.plantuml)}
+                        className="absolute top-2 right-2 px-3 py-1.5 text-sm bg-gray-700 hover:bg-gray-600 text-white rounded transition-colors z-10"
+                      >
+                        Copy
+                      </button>
+                      <CodeHighlighter
+                        code={diagramData.plantuml}
+                        language="plantuml"
+                      />
+                    </div>
+                  )}
+
+                  {activeTab === "json" && diagramData.json && (
+                    <div className="relative">
+                      <button
+                        onClick={() => handleCopy(diagramData.json)}
+                        className="absolute top-2 right-2 px-3 py-1.5 text-sm bg-gray-700 hover:bg-gray-600 text-white rounded transition-colors z-10"
+                      >
+                        Copy
+                      </button>
+                      <CodeHighlighter
+                        code={diagramData.json}
+                        language="json"
+                      />
+                    </div>
+                  )}
+
+                  {/* Summary if available */}
+                  {parsedOutput?.summary && (
+                    <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
+                      <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                        Diagram Summary
+                      </h3>
+                      <pre className="text-xs text-gray-600 dark:text-gray-400 whitespace-pre-wrap font-mono">
+                        {parsedOutput.summary}
+                      </pre>
+                    </div>
+                  )}
+
+                  {/* Warnings if available */}
+                  {parsedOutput?.warnings && parsedOutput.warnings.length > 0 && (
+                    <div className="mt-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded">
+                      <h3 className="text-sm font-semibold text-yellow-800 dark:text-yellow-300 mb-2">
+                        Warnings
+                      </h3>
+                      <ul className="list-disc list-inside text-sm text-yellow-700 dark:text-yellow-400 space-y-1">
+                        {parsedOutput.warnings.map((warning: string, index: number) => (
+                          <li key={index}>{warning}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {!loading && !error && !output && (
+                <div className="absolute inset-0 flex items-center justify-center text-gray-400">
+                  <div className="text-center">
+                    <svg
+                      className="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-gray-600"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.5}
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                      />
+                    </svg>
+                    <p>Configure your architecture to generate diagram</p>
+                    <p className="text-sm mt-2">Load a template or sample to get started</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Reference */}
+        <div className="mt-8 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            Quick Reference
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
+            <div>
+              <h4 className="font-semibold text-gray-900 dark:text-white mb-2">
+                Component Types
+              </h4>
+              <ul className="space-y-1 text-gray-600 dark:text-gray-400">
+                <li>• server, database, container, vm</li>
+                <li>• api, queue, cache, storage</li>
+                <li>• load-balancer, firewall, gateway</li>
+                <li>• function, cdn, dns, user</li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold text-gray-900 dark:text-white mb-2">
+                Connection Types
+              </h4>
+              <ul className="space-y-1 text-gray-600 dark:text-gray-400">
+                <li>• http, https, tcp, udp</li>
+                <li>• grpc, websocket, database</li>
+                <li>• message-queue, sync, async</li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold text-gray-900 dark:text-white mb-2">
+                Layout Algorithms
+              </h4>
+              <ul className="space-y-1 text-gray-600 dark:text-gray-400">
+                <li>• hierarchical, force-directed</li>
+                <li>• circular, grid, layered, tree</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* URL Loader Modal */}
+      {showUrlModal && (
+        <UrlLoaderModal
+          isOpen={showUrlModal}
+          onClose={() => setShowUrlModal(false)}
+          onLoad={(content) => {
+            setInput(content);
+            setShowUrlModal(false);
+          }}
+        />
+      )}
+    </div>
+  );
+}

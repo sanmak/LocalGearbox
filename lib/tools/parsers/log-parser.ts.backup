@@ -1,0 +1,317 @@
+/*
+ * Copyright (c) 2025 LocalGearbox. All rights reserved.
+ * Licensed under the MIT License. See LICENSE file in the project root for details.
+ */
+
+/**
+ * Log Parser Playground
+ * Parse and analyze logs with regex patterns and structured formats
+ */
+
+import { validateInput, TEXT_SIZE_LIMIT } from "../shared";
+
+/**
+ * Supported log formats
+ */
+type LogFormat = keyof typeof LOG_PATTERNS;
+
+/**
+ * Common log format patterns
+ */
+const LOG_PATTERNS = {
+  nginx: {
+    name: "NGINX Access Log",
+    pattern:
+      /^(\S+) - (\S+) \[([^\]]+)\] "(\S+) (\S+) (\S+)" (\d+) (\d+) "([^"]*)" "([^"]*)"$/,
+    fields: [
+      "ip",
+      "ident",
+      "timestamp",
+      "method",
+      "path",
+      "protocol",
+      "status",
+      "bytes",
+      "referer",
+      "user_agent",
+    ],
+    example: `192.168.1.100 - - [10/Dec/2023:10:15:32 +0000] "GET /api/users HTTP/1.1" 200 1024 "-" "Mozilla/5.0"`,
+  },
+  apache: {
+    name: "Apache Access Log",
+    pattern:
+      /^(\S+) (\S+) (\S+) \[([^\]]+)\] "(\S+) (\S+) (\S+)" (\d+) (\d+) "([^"]*)" "([^"]*)"$/,
+    fields: [
+      "ip",
+      "ident",
+      "user",
+      "timestamp",
+      "method",
+      "path",
+      "protocol",
+      "status",
+      "bytes",
+      "referer",
+      "user_agent",
+    ],
+    example: `192.168.1.100 - john [10/Dec/2023:10:15:32 +0000] "GET /api/users HTTP/1.1" 200 1024 "-" "Mozilla/5.0"`,
+  },
+  json: {
+    name: "JSON Log",
+    pattern: null, // JSON parsing
+    fields: [
+      "timestamp",
+      "level",
+      "message",
+      "service",
+      "request_id",
+      "user_id",
+      "duration",
+      "status",
+    ],
+    example: `{"timestamp":"2023-12-10T10:15:32Z","level":"INFO","message":"User login successful","service":"auth","request_id":"req-123","user_id":"user-456","duration":150,"status":200}`,
+  },
+  syslog: {
+    name: "Syslog",
+    pattern: /^<(\d+)>(\w{3})\s+(\d+)\s+(\d+):(\d+):(\d+)\s+(\S+)\s+(.+)$/,
+    fields: [
+      "priority",
+      "month",
+      "day",
+      "hour",
+      "minute",
+      "second",
+      "hostname",
+      "message",
+    ],
+    example: `<30>Dec 10 10:15:32 web-server User login: user123`,
+  },
+  custom: {
+    name: "Custom Regex",
+    pattern: null,
+    fields: [],
+    example: "",
+  },
+};
+
+/**
+ * Parse a single log line using regex pattern
+ */
+function parseLogLine(
+  line: string,
+  pattern: RegExp,
+  fields: string[]
+): any | null {
+  const match = line.match(pattern);
+  if (!match) return null;
+
+  const result: any = {};
+  fields.forEach((field, index) => {
+    result[field] = match[index + 1] || "";
+  });
+  return result;
+}
+
+/**
+ * Parse JSON log line
+ */
+function parseJsonLogLine(line: string): any | null {
+  try {
+    return JSON.parse(line);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Apply filters to parsed log entries
+ */
+function applyFilters(entries: any[], filters: any[]): any[] {
+  if (!filters || filters.length === 0) return entries;
+
+  return entries.filter((entry) => {
+    return filters.every((filter) => {
+      const value = entry[filter.field];
+      if (value === undefined) return false;
+
+      switch (filter.operator) {
+        case "equals":
+          return value === filter.value;
+        case "contains":
+          return String(value).includes(filter.value);
+        case "regex":
+          try {
+            return new RegExp(filter.value).test(String(value));
+          } catch {
+            return false;
+          }
+        case "gt":
+          return Number(value) > Number(filter.value);
+        case "lt":
+          return Number(value) < Number(filter.value);
+        case "gte":
+          return Number(value) >= Number(filter.value);
+        case "lte":
+          return Number(value) <= Number(filter.value);
+        default:
+          return true;
+      }
+    });
+  });
+}
+
+/**
+ * Extract unique values for a field
+ */
+function extractFieldValues(entries: any[], field: string): string[] {
+  const values = new Set<string>();
+  entries.forEach((entry) => {
+    if (entry[field] !== undefined) {
+      values.add(String(entry[field]));
+    }
+  });
+  return Array.from(values).sort();
+}
+
+/**
+ * Main log parser processor
+ */
+export async function processLogParser(input: string): Promise<string> {
+  validateInput(input, TEXT_SIZE_LIMIT);
+
+  try {
+    // Parse input as JSON with configuration
+    let config: any = {};
+    let logText = input;
+
+    try {
+      const parsed = JSON.parse(input);
+      if (parsed && typeof parsed === "object" && parsed.logs) {
+        config = parsed.config || {};
+        logText = parsed.logs;
+      }
+    } catch {
+      // Input is plain log text, use defaults
+    }
+
+    const format = (config.format || "nginx") as LogFormat;
+    const customPattern = config.customPattern;
+    const filters = config.filters || [];
+    const maxLines = config.maxLines || 100;
+
+    if (!LOG_PATTERNS[format]) {
+      return JSON.stringify(
+        {
+          error: `Unsupported log format: ${format}`,
+          supportedFormats: Object.keys(LOG_PATTERNS),
+        },
+        null,
+        2
+      );
+    }
+
+    const pattern = LOG_PATTERNS[format];
+    const lines = logText.split("\n").slice(0, maxLines);
+    const entries: any[] = [];
+    const errors: string[] = [];
+
+    // Parse each line
+    lines.forEach((line, index) => {
+      if (!line.trim()) return;
+
+      let parsed: any = null;
+
+      if (format === "json") {
+        parsed = parseJsonLogLine(line);
+      } else if (format === "custom" && customPattern) {
+        try {
+          const regex = new RegExp(customPattern);
+          parsed = parseLogLine(line, regex, config.fields || []);
+        } catch (err) {
+          const errorMessage = err instanceof Error ? err.message : String(err);
+          errors.push(
+            `Line ${index + 1}: Invalid regex pattern - ${errorMessage}`
+          );
+        }
+      } else if (pattern.pattern) {
+        parsed = parseLogLine(line, pattern.pattern, pattern.fields);
+      }
+
+      if (parsed) {
+        parsed._original = line;
+        parsed._lineNumber = index + 1;
+        entries.push(parsed);
+      } else {
+        errors.push(
+          `Line ${index + 1}: Failed to parse - ${line.substring(0, 100)}...`
+        );
+      }
+    });
+
+    // Apply filters
+    const filteredEntries = applyFilters(entries, filters);
+
+    // Extract field statistics
+    const fieldStats: any = {};
+    if (entries.length > 0) {
+      const sampleEntry = entries[0];
+      Object.keys(sampleEntry).forEach((field) => {
+        if (!field.startsWith("_")) {
+          fieldStats[field] = {
+            count: entries.filter((e) => e[field] !== undefined).length,
+            uniqueValues: extractFieldValues(entries, field).length,
+            sampleValues: extractFieldValues(entries, field).slice(0, 5),
+          };
+        }
+      });
+    }
+
+    return JSON.stringify(
+      {
+        summary: {
+          totalLines: lines.length,
+          parsedLines: entries.length,
+          filteredLines: filteredEntries.length,
+          errorLines: errors.length,
+          format: format,
+          fields: Object.keys(fieldStats),
+        },
+        fieldStats,
+        entries: filteredEntries.slice(0, 50), // Limit output
+        errors: errors.slice(0, 10), // Limit errors
+        config: {
+          format,
+          filters,
+          maxLines,
+          customPattern: customPattern || null,
+        },
+      },
+      null,
+      2
+    );
+  } catch (error) {
+    return JSON.stringify(
+      {
+        error: `Processing error: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
+      },
+      null,
+      2
+    );
+  }
+}
+
+/**
+ * Get available log formats and examples
+ */
+export async function getLogFormats(): Promise<string> {
+  const formats = Object.entries(LOG_PATTERNS).map(([key, pattern]) => ({
+    id: key,
+    name: pattern.name,
+    fields: pattern.fields,
+    example: pattern.example,
+  }));
+
+  return JSON.stringify({ formats }, null, 2);
+}

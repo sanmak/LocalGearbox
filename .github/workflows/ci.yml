@@ -1,0 +1,215 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+permissions:
+  contents: read
+
+# Cancel in-progress runs when a new commit is pushed
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ============================================
+  # Lint & Format Check
+  # ============================================
+  lint:
+    name: Lint & Format
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
+        with:
+          node-version: '24.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linter
+        run: npm run lint
+
+      - name: Check formatting
+        run: npm run format:check
+
+  # ============================================
+  # TypeScript Type Check
+  # ============================================
+  type-check:
+    name: Type Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
+        with:
+          node-version: '24.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run type check
+        run: npm run type-check
+
+  # ============================================
+  # Unit Tests with Coverage
+  # ============================================
+  test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
+        with:
+          node-version: '24.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests with coverage
+        run: npm run test:coverage
+
+      - name: Upload coverage reports to Codecov
+        if: env.CODECOV_TOKEN != ''
+        uses: codecov/codecov-action@125fc84a9a348dbcf27191600683ec096ec9021c # v4.4.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage/lcov.info
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+
+  # ============================================
+  # Security Audit
+  # ============================================
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
+        with:
+          node-version: '24.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run npm audit
+        run: npm audit --audit-level=high
+        continue-on-error: true
+
+      - name: Privacy & Bloat Guard
+        run: |
+          # Check for common tracking scripts in the source code
+          echo "🔍 Scanning for tracking scripts..."
+          if grep -rq "google-analytics\|googletagmanager\|segment\|hotjar\|mixpanel\|amplitude" ./app ./components ./lib 2>/dev/null; then
+            echo "❌ Privacy Violation: Tracking scripts detected!"
+            exit 1
+          fi
+          echo "✅ No tracking scripts found"
+
+  # ============================================
+  # Build & Bundle Analysis
+  # ============================================
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [lint, type-check, test, security]
+
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@60edb5dd545a775178f52524783378180af0d1f8 # v4.0.2
+        with:
+          node-version: '24.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run build
+
+      - name: Analyze bundle size
+        run: |
+          echo "📊 Bundle Size Analysis"
+          echo "========================"
+          if [ -d ".next" ]; then
+            echo "Static files:"
+            du -sh .next/static 2>/dev/null || echo "No static directory"
+            echo ""
+            echo "Server files:"
+            du -sh .next/server 2>/dev/null || echo "No server directory"
+            echo ""
+            echo "Total .next size:"
+            du -sh .next
+          fi
+
+      - name: Bundle Size Threshold Check
+        run: |
+          echo "🔍 Checking bundle size threshold..."
+
+          # Define thresholds (in MB)
+          TOTAL_THRESHOLD=50
+          STATIC_THRESHOLD=30
+
+          if [ -d ".next" ]; then
+            # Get total size in MB
+            TOTAL_SIZE=$(du -sm .next | cut -f1)
+            echo "Total bundle size: ${TOTAL_SIZE}MB (threshold: ${TOTAL_THRESHOLD}MB)"
+
+            if [ "$TOTAL_SIZE" -gt "$TOTAL_THRESHOLD" ]; then
+              echo "❌ FAIL: Total bundle size (${TOTAL_SIZE}MB) exceeds threshold (${TOTAL_THRESHOLD}MB)"
+              exit 1
+            fi
+
+            # Get static size in MB if exists
+            if [ -d ".next/static" ]; then
+              STATIC_SIZE=$(du -sm .next/static | cut -f1)
+              echo "Static bundle size: ${STATIC_SIZE}MB (threshold: ${STATIC_THRESHOLD}MB)"
+
+              if [ "$STATIC_SIZE" -gt "$STATIC_THRESHOLD" ]; then
+                echo "❌ FAIL: Static bundle size (${STATIC_SIZE}MB) exceeds threshold (${STATIC_THRESHOLD}MB)"
+                exit 1
+              fi
+            fi
+
+            echo "✅ Bundle size within acceptable limits"
+          else
+            echo "⚠️ No .next directory found"
+            exit 1
+          fi
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3 # v4.3.1
+        with:
+          name: build-output
+          path: .next
+          retention-days: 7

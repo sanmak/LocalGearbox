@@ -1,0 +1,1 @@
+# LocalGearbox Static Assets
