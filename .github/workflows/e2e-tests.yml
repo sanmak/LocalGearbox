@@ -16,9 +16,9 @@ jobs:
         browser: [chromium]
 
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/checkout@v4 # v4.1.1
 
-      - uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
+      - uses: actions/setup-node@v4 # v4.0.2
         with:
           node-version: '24'
           cache: 'npm'
@@ -37,7 +37,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        uses: actions/upload-artifact@v4 # v4.3.1
         with:
           name: smoke-test-results-${{ matrix.browser }}
           path: test-results/
@@ -54,9 +54,9 @@ jobs:
         shard: [1/4, 2/4, 3/4, 4/4]
 
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/checkout@v4 # v4.1.1
 
-      - uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
+      - uses: actions/setup-node@v4 # v4.0.2
         with:
           node-version: '24'
           cache: 'npm'
@@ -75,7 +75,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        uses: actions/upload-artifact@v4 # v4.3.1
         with:
           name: e2e-results-${{ matrix.browser }}-${{ matrix.shard }}
           path: test-results/
@@ -83,7 +83,7 @@ jobs:
 
       - name: Upload HTML report
         if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        uses: actions/upload-artifact@v4 # v4.3.1
         with:
           name: playwright-report-${{ matrix.browser }}-${{ matrix.shard }}
           path: playwright-report/
@@ -95,9 +95,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/checkout@v4 # v4.1.1
 
-      - uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
+      - uses: actions/setup-node@v4 # v4.0.2
         with:
           node-version: '24'
           cache: 'npm'
@@ -116,7 +116,7 @@ jobs:
 
       - name: Upload accessibility results
         if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        uses: actions/upload-artifact@v4 # v4.3.1
         with:
           name: accessibility-results
           path: test-results/
@@ -128,9 +128,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/checkout@v4 # v4.1.1
 
-      - uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
+      - uses: actions/setup-node@v4 # v4.0.2
         with:
           node-version: '24'
           cache: 'npm'
@@ -150,7 +150,7 @@ jobs:
 
       - name: Upload visual test results
         if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        uses: actions/upload-artifact@v4 # v4.3.1
         with:
           name: visual-regression-results
           path: |
@@ -167,9 +167,9 @@ jobs:
         device: [mobile-chrome, mobile-safari, tablet]
 
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/checkout@v4 # v4.1.1
 
-      - uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
+      - uses: actions/setup-node@v4 # v4.0.2
         with:
           node-version: '24'
           cache: 'npm'
@@ -188,7 +188,7 @@ jobs:
 
       - name: Upload mobile test results
         if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        uses: actions/upload-artifact@v4 # v4.3.1
         with:
           name: mobile-results-${{ matrix.device }}
           path: test-results/
@@ -202,7 +202,7 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+      - uses: actions/download-artifact@v4 # v4.1.7
         with:
           path: all-test-results
 
@@ -212,7 +212,7 @@ jobs:
           find all-test-results -name "*.json" -exec cp {} merged-results/ \;
 
       - name: Upload merged results
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        uses: actions/upload-artifact@v4 # v4.3.1
         with:
           name: merged-test-results
           path: merged-results/
@@ -226,9 +226,9 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/checkout@v4 # v4.1.1
 
-      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+      - uses: actions/download-artifact@v4 # v4.1.7
         with:
           name: merged-test-results
           path: test-results

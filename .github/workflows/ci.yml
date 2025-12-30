@@ -24,10 +24,10 @@ jobs:
     timeout-minutes: 15
 
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/checkout@v4 # v4.1.1
 
       - name: Setup Node.js
-        uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
+        uses: actions/setup-node@v4 # v4.0.2
         with:
           node-version: '24.x'
           cache: 'npm'
@@ -50,10 +50,10 @@ jobs:
     timeout-minutes: 15
 
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/checkout@v4 # v4.1.1
 
       - name: Setup Node.js
-        uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
+        uses: actions/setup-node@v4 # v4.0.2
         with:
           node-version: '24.x'
           cache: 'npm'
@@ -75,10 +75,10 @@ jobs:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/checkout@v4 # v4.1.1
 
       - name: Setup Node.js
-        uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
+        uses: actions/setup-node@v4 # v4.0.2
         with:
           node-version: '24.x'
           cache: 'npm'
@@ -91,7 +91,7 @@ jobs:
 
       - name: Upload coverage reports to Codecov
         if: env.CODECOV_TOKEN != ''
-        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
+        uses: codecov/codecov-action@v5 # v5.5.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage/lcov.info
@@ -108,10 +108,10 @@ jobs:
     timeout-minutes: 15
 
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/checkout@v4 # v4.1.1
 
       - name: Setup Node.js
-        uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
+        uses: actions/setup-node@v4 # v4.0.2
         with:
           node-version: '24.x'
           cache: 'npm'
@@ -143,10 +143,10 @@ jobs:
     needs: [lint, type-check, test, security]
 
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      - uses: actions/checkout@v4 # v4.1.1
 
       - name: Setup Node.js
-        uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f # v6.1.0
+        uses: actions/setup-node@v4 # v4.0.2
         with:
           node-version: '24.x'
           cache: 'npm'
@@ -208,7 +208,7 @@ jobs:
           fi
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        uses: actions/upload-artifact@v4 # v4.3.1
         with:
           name: build-output
           path: .next
