@@ -85,21 +85,79 @@ self.onmessage = (e: MessageEvent<WorkerMessage>) => {
   try {
     const safeLog = (...args: any[]) => logs.push(args.map((a) => String(a)).join(' '));
 
-    // Still uses Function constructor, but now isolated in Web Worker
-    // Worker has no access to DOM, localStorage, cookies, or parent window
-    const executionFn = new Function(
-      'pm',
-      'console',
-      `
-      try {
-        ${script}
-      } catch (e) {
-        throw new Error(e.message);
-      }
-    `,
-    );
+    /**
+     * Instead of executing arbitrary JavaScript via `new Function`, we now treat
+     * the incoming `script` as a JSON-encoded instruction set that describes
+     * tests to run, environment updates, and log messages.
+     *
+     * Expected shape (example):
+     * {
+     *   "envUpdates": { "TOKEN": "abc123" },
+     *   "logs": ["starting tests"],
+     *   "tests": [
+     *     { "name": "status is 200", "type": "responseStatus", "expected": 200 },
+     *     { "name": "env foo equals bar", "type": "envEqual", "key": "foo", "expected": "bar" }
+     *   ]
+     * }
+     */
+    type ScriptInstruction =
+      | { type: 'responseStatus'; name: string; expected: number }
+      | { type: 'envEqual'; name: string; key: string; expected: any }
+      | { type: 'envBe'; name: string; key: string; expected: any };
 
-    executionFn(pm, { log: safeLog, error: safeLog, warn: safeLog });
+    interface ScriptPayload {
+      envUpdates?: Record<string, string>;
+      logs?: string[];
+      tests?: ScriptInstruction[];
+    }
+
+    let payload: ScriptPayload;
+
+    try {
+      payload = JSON.parse(script) as ScriptPayload;
+    } catch (parseError: any) {
+      throw new Error(`Failed to parse script instructions: ${parseError.message || String(parseError)}`);
+    }
+
+    if (payload.envUpdates) {
+      for (const [key, value] of Object.entries(payload.envUpdates)) {
+        environmentUpdates[key] = String(value);
+      }
+    }
+
+    if (payload.logs) {
+      for (const entry of payload.logs) {
+        safeLog(entry);
+      }
+    }
+
+    if (payload.tests) {
+      for (const instruction of payload.tests) {
+        const { name } = instruction as { name: string };
+        pm.test(name, () => {
+          switch (instruction.type) {
+            case 'responseStatus':
+              if (typeof instruction.expected !== 'number') {
+                throw new Error('expected must be a number for responseStatus tests');
+              }
+              pm.expect(null).to.have.status(instruction.expected);
+              break;
+            case 'envEqual': {
+              const actual = pm.environment.get(instruction.key);
+              pm.expect(actual).to.equal(instruction.expected);
+              break;
+            }
+            case 'envBe': {
+              const actual = pm.environment.get(instruction.key);
+              pm.expect(actual).to.be(instruction.expected);
+              break;
+            }
+            default:
+              throw new Error(`Unsupported test instruction type: ${(instruction as any).type}`);
+          }
+        });
+      }
+    }
 
     self.postMessage({ environmentUpdates, testResults, logs } as WorkerResult);
   } catch (err: any) {
