@@ -507,7 +507,7 @@ Expected test execution times:
 
 | Type               | Target          | Current     |
 | ------------------ | --------------- | ----------- |
-| Unit Tests         | 80%             | ~45%        |
+| Unit Tests         | 80%             | ~34%        |
 | E2E Critical Paths | 100%            | In Progress |
 | Accessibility      | Zero violations | In Progress |
 | Visual Baseline    | 100% key pages  | In Progress |

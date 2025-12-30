@@ -181,7 +181,7 @@ Documentation:
 Quality:
 - Zero-lint tolerance enforced
 - Strict TypeScript configuration
-- 45% test coverage minimum
+- 25% test coverage minimum
 - WCAG 2.1 AA accessibility compliance"
 
 git push origin v0.1.0
@@ -299,7 +299,7 @@ Architecture Diagram, OpenAPI/gRPC Workbench, Log Parser
 
 - **Zero-Lint Tolerance** - No ESLint warnings/errors allowed
 - **Strict TypeScript** - Full type safety enforced
-- **Test Coverage** - 45% minimum coverage (statements/functions/lines)
+- **Test Coverage** - 25% minimum coverage (statements/functions/lines)
 - **Accessibility** - WCAG 2.1 AA compliance
 - **Pre-commit Hooks** - Quality gates enforced via Husky
 
@@ -477,7 +477,7 @@ github: [sanmak]
 ### Repository Health
 
 - **Code Quality:** Enterprise-grade
-- **Test Coverage:** 45% minimum enforced
+- **Test Coverage:** 25% minimum enforced
 - **Documentation:** Comprehensive (8 markdown files)
 - **CI/CD:** Fully automated
 - **Security:** Audited and documented

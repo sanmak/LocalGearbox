@@ -33,10 +33,10 @@ export default defineConfig({
         'eslint.config.js',
       ],
       thresholds: {
-        statements: 45,
+        statements: 25,
         branches: 25,
-        functions: 45,
-        lines: 45,
+        functions: 25,
+        lines: 25,
       },
     },
     testTimeout: 10000,

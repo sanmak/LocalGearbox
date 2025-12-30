@@ -213,10 +213,10 @@ describe('myFunction', () => {
 
 The project enforces minimum coverage thresholds:
 
-- **Statements**: 50%
-- **Branches**: 50%
-- **Functions**: 50%
-- **Lines**: 50%
+- **Statements**: 25%
+- **Branches**: 25%
+- **Functions**: 25%
+- **Lines**: 25%
 
 These thresholds will increase over time as test coverage improves.
 

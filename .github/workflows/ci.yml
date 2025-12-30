@@ -127,7 +127,7 @@ jobs:
         run: |
           # Check for common tracking scripts in the source code
           echo "🔍 Scanning for tracking scripts..."
-          if grep -rq "google-analytics\|googletagmanager\|segment\|hotjar\|mixpanel\|amplitude" ./app ./components ./lib 2>/dev/null; then
+          if grep -rq "google-analytics\|googletagmanager\|cdn.segment.com\|@segment\|segment.io\|hotjar\|mixpanel\|amplitude" ./app ./components ./lib 2>/dev/null; then
             echo "❌ Privacy Violation: Tracking scripts detected!"
             exit 1
           fi
