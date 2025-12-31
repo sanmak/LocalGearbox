@@ -116,7 +116,9 @@ self.onmessage = (e: MessageEvent<WorkerMessage>) => {
     try {
       payload = JSON.parse(script) as ScriptPayload;
     } catch (parseError: any) {
-      throw new Error(`Failed to parse script instructions: ${parseError.message || String(parseError)}`);
+      throw new Error(
+        `Failed to parse script instructions: ${parseError.message || String(parseError)}`,
+      );
     }
 
     if (payload.envUpdates) {
