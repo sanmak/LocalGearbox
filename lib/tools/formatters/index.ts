@@ -46,6 +46,8 @@ export const formatXML = async (input: string): Promise<string> => {
 
   try {
     const parser = new DOMParser();
+    // Safe: application/xml MIME type does not execute scripts
+    // The document is used only for formatting and is never inserted into the DOM
     const doc = parser.parseFromString(input, 'application/xml');
 
     const formatNode = (node: Node, indent = 0): string => {

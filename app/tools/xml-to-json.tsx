@@ -105,6 +105,8 @@ async function convertXmlToJson(input: string): Promise<string> {
 
   try {
     const parser = new DOMParser();
+    // Safe: application/xml MIME type does not execute scripts
+    // The document is used only for conversion and is never inserted into the DOM
     const doc = parser.parseFromString(input, 'application/xml');
 
     // Check for parse errors

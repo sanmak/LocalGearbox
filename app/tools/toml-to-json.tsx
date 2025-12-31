@@ -107,13 +107,24 @@ function parseValue(value: string, _lines?: string[], _lineIndex?: number): unkn
 
   // Basic strings
   if (value.startsWith('"') && value.endsWith('"')) {
-    return value
-      .slice(1, -1)
-      .replace(/\\\\/g, '\\') // Replace escaped backslashes first
-      .replace(/\\n/g, '\n')
-      .replace(/\\t/g, '\t')
-      .replace(/\\r/g, '\r')
-      .replace(/\\"/g, '"');
+    // Fixed double escaping: Process all escape sequences in a single pass
+    // to avoid incorrect interpretation of already-unescaped sequences
+    return value.slice(1, -1).replace(/\\(.)/g, (match, char) => {
+      switch (char) {
+        case 'n':
+          return '\n';
+        case 't':
+          return '\t';
+        case 'r':
+          return '\r';
+        case '"':
+          return '"';
+        case '\\':
+          return '\\';
+        default:
+          return match; // Keep unknown escape sequences as-is
+      }
+    });
   }
 
   // Literal strings
@@ -137,7 +148,9 @@ function parseValue(value: string, _lines?: string[], _lineIndex?: number): unkn
   if (value.match(/^[+-]?\d*\.\d+([eE][+-]?\d+)?$/)) {
     return parseFloat(value);
   }
-  if (value.match(/^[+-]?(\d+_?)+$/)) {
+  // Fixed ReDoS: Use possessive quantifier pattern to prevent catastrophic backtracking
+  if (value.match(/^[+-]?[\d_]+$/)) {
+    // TOML allows underscores in numbers for readability
     return parseInt(value.replace(/_/g, ''), 10);
   }
   if (value === 'inf' || value === '+inf') return Infinity;

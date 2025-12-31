@@ -248,13 +248,27 @@ export default function ResponsiveTesterPage() {
   const iframeRefs = useRef<Record<string, HTMLIFrameElement | null>>({});
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Validate URL
+  // Validate and sanitize URL to prevent XSS
   const isValidUrl = useCallback((urlString: string): boolean => {
     try {
       const parsed = new URL(urlString);
       return parsed.protocol === 'http:' || parsed.protocol === 'https:';
     } catch {
       return false;
+    }
+  }, []);
+
+  // Sanitize URL to prevent XSS attacks via javascript:, data:, or other dangerous protocols
+  const sanitizeUrl = useCallback((urlString: string): string => {
+    try {
+      const parsed = new URL(urlString);
+      // Only allow http and https protocols
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+        return 'about:blank';
+      }
+      return urlString;
+    } catch {
+      return 'about:blank';
     }
   }, []);
 
@@ -842,7 +856,7 @@ export default function ResponsiveTesterPage() {
                       ref={(el) => {
                         iframeRefs.current[device.key] = el;
                       }}
-                      src={loadedUrl}
+                      src={sanitizeUrl(loadedUrl)}
                       title={`${device.name} preview`}
                       style={{
                         width: dimensions.width,
@@ -999,7 +1013,7 @@ export default function ResponsiveTesterPage() {
                     </div>
                   ) : (
                     <iframe
-                      src={loadedUrl}
+                      src={sanitizeUrl(loadedUrl)}
                       title={`${fullscreenDevice.name} fullscreen preview`}
                       style={{
                         width: getDeviceDimensions(fullscreenDevice).width,
@@ -1130,7 +1144,7 @@ export default function ResponsiveTesterPage() {
                           </div>
                         ) : (
                           <iframe
-                            src={loadedUrl}
+                            src={sanitizeUrl(loadedUrl)}
                             title={`${device.name} all fullscreen preview`}
                             style={{
                               width: dimensions.width,
