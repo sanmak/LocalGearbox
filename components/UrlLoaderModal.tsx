@@ -19,6 +19,14 @@
  * - Request/Response preview
  */
 
+/**
+ * Safely escapes a string for use in double-quoted strings
+ * IMPORTANT: Escapes backslashes FIRST to prevent double-escaping
+ */
+const escapeDoubleQuoted = (str: string): string => {
+  return str.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+};
+
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   RequestConfig,
@@ -100,12 +108,12 @@ function fixJsonBody(body: string): string {
   // Replace single quotes with double quotes for string values
   // Handle: 'value' -> "value"
   fixed = fixed.replace(/:\s*'([^'\\]*(?:\\.[^'\\]*)*)'/g, (_, content) => {
-    return `: "${content.replace(/"/g, '\\"')}"`;
+    return `: "${escapeDoubleQuoted(content)}"`;
   });
 
   // Handle single-quoted property names: 'key': -> "key":
   fixed = fixed.replace(/'([^'\\]*(?:\\.[^'\\]*)*)'\s*:/g, (_, content) => {
-    return `"${content.replace(/"/g, '\\"')}":`;
+    return `"${escapeDoubleQuoted(content)}":`;
   });
 
   // Handle unquoted property names: key: -> "key":
@@ -114,10 +122,10 @@ function fixJsonBody(body: string): string {
 
   // Handle array values with single quotes
   fixed = fixed.replace(/\[\s*'([^'\\]*(?:\\.[^'\\]*)*)'/g, (_, content) => {
-    return `["${content.replace(/"/g, '\\"')}"`;
+    return `["${escapeDoubleQuoted(content)}"`;
   });
   fixed = fixed.replace(/,\s*'([^'\\]*(?:\\.[^'\\]*)*)'/g, (_, content) => {
-    return `, "${content.replace(/"/g, '\\"')}"`;
+    return `, "${escapeDoubleQuoted(content)}"`;
   });
 
   // Try to parse the fixed version

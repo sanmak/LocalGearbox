@@ -5,6 +5,27 @@
 
 import { ApiRequest } from './stores/api-client-store';
 
+/**
+ * Safely escapes a string for use in double-quoted strings
+ * IMPORTANT: Escapes backslashes FIRST to prevent double-escaping
+ */
+const escapeDoubleQuoted = (str: string): string => {
+  return str
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"')
+    .replace(/\n/g, '\\n')
+    .replace(/\r/g, '\\r')
+    .replace(/\t/g, '\\t');
+};
+
+/**
+ * Safely escapes a string for use in single-quoted strings
+ * IMPORTANT: Escapes backslashes FIRST to prevent double-escaping
+ */
+const escapeSingleQuoted = (str: string): string => {
+  return str.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+};
+
 export type CodeLanguage =
   | 'curl'
   | 'c_libcurl'
@@ -163,7 +184,7 @@ int main(void) {
     curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "${method}");
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
-    ${body && bodyType !== 'none' ? `curl_easy_setopt(curl, CURLOPT_POSTFIELDS, "${body.replace(/"/g, '\\"').replace(/\n/g, '\\n')}");` : ''}
+    ${body && bodyType !== 'none' ? `curl_easy_setopt(curl, CURLOPT_POSTFIELDS, "${escapeDoubleQuoted(body)}");` : ''}
 
     res = curl_easy_perform(curl);
     if(res != CURLE_OK)
@@ -210,7 +231,7 @@ var request = new HttpRequestMessage(HttpMethod.${method}, "${url}");
 ${Object.entries(activeHeaders)
   .map(([k, v]) => `request.Headers.Add("${k}", "${v}");`)
   .join('\n')}
-${body && bodyType !== 'none' ? `request.Content = new StringContent("${body.replace(/"/g, '\\"')}", null, "${activeHeaders['Content-Type'] || 'text/plain'}");` : ''}
+${body && bodyType !== 'none' ? `request.Content = new StringContent("${escapeDoubleQuoted(body)}", null, "${activeHeaders['Content-Type'] || 'text/plain'}");` : ''}
 
 var response = await client.SendAsync(request);
 response.EnsureSuccessStatusCode();
@@ -222,7 +243,7 @@ var request = new RestRequest(Method.${method});
 ${Object.entries(activeHeaders)
   .map(([k, v]) => `request.AddHeader("${k}", "${v}");`)
   .join('\n')}
-${body && bodyType !== 'none' ? `request.AddParameter("${activeHeaders['Content-Type'] || 'text/plain'}", "${body.replace(/"/g, '\\"')}", ParameterType.RequestBody);` : ''}
+${body && bodyType !== 'none' ? `request.AddParameter("${activeHeaders['Content-Type'] || 'text/plain'}", "${escapeDoubleQuoted(body)}", ParameterType.RequestBody);` : ''}
 
 RestResponse response = await client.ExecuteAsync(request);
 Console.WriteLine(response.Content);`;
@@ -233,7 +254,7 @@ client.prepare("${method}", "${url}")
   ${Object.entries(activeHeaders)
     .map(([k, v]) => `.setHeader("${k}", "${v}")`)
     .join('\n  ')}
-  ${body && bodyType !== 'none' ? `.setBody("${body.replace(/"/g, '\\"')}")` : ''}
+  ${body && bodyType !== 'none' ? `.setBody("${escapeDoubleQuoted(body)}")` : ''}
   .execute()
   .toCompletableFuture()
   .thenAccept(s -> System.out.println(s.getResponseBody()))
@@ -245,7 +266,7 @@ client.close();`;
       return `HttpClient client = HttpClient.newHttpClient();
 HttpRequest request = HttpRequest.newBuilder()
   .uri(URI.create("${url}"))
-  .method("${method}", ${body && bodyType !== 'none' ? `HttpRequest.BodyPublishers.ofString("${body.replace(/"/g, '\\"')}")` : 'HttpRequest.BodyPublishers.noBody()'})
+  .method("${method}", ${body && bodyType !== 'none' ? `HttpRequest.BodyPublishers.ofString("${escapeDoubleQuoted(body)}")` : 'HttpRequest.BodyPublishers.noBody()'})
   ${Object.entries(activeHeaders)
     .map(([k, v]) => `.setHeader("${k}", "${v}")`)
     .join('\n  ')}
@@ -259,7 +280,7 @@ System.out.println(response.body());`;
   ${Object.entries(activeHeaders)
     .map(([k, v]) => `.header("${k}", "${v}")`)
     .join('\n  ')}
-  ${body && bodyType !== 'none' ? `.body("${body.replace(/"/g, '\\"')}")` : ''}
+  ${body && bodyType !== 'none' ? `.body("${escapeDoubleQuoted(body)}")` : ''}
   .asString();
 
 System.out.println(response.getBody());`;
@@ -267,7 +288,7 @@ System.out.println(response.getBody());`;
     case 'kotlin_okhttp':
       return `val client = OkHttpClient()
 val mediaType = "${activeHeaders['Content-Type'] || 'text/plain'}".toMediaType()
-val body = ${body && bodyType !== 'none' ? `"${body.replace(/"/g, '\\"')}".toRequestBody(mediaType)` : '"".toRequestBody(null)'}
+val body = ${body && bodyType !== 'none' ? `"${escapeDoubleQuoted(body)}".toRequestBody(mediaType)` : '"".toRequestBody(null)'}
 val request = Request.Builder()
   .url("${url}")
   .method("${method}", body)
@@ -441,7 +462,7 @@ func main() {
             `'form_params' => ${JSON.stringify(data, null, 4).replace(/\{/g, '[').replace(/\}/g, ']').replace(/:/g, ' =>')}`,
           );
         } else if (bodyType === 'raw') {
-          phpOptions.push(`'body' => '${body.replace(/'/g, "\\'")}'`);
+          phpOptions.push(`'body' => '${escapeSingleQuoted(body)}'`);
         }
       }
 
@@ -463,14 +484,14 @@ echo $response->getBody();`;
       let javaBody = 'RequestBody.create(null, new byte[0])';
       if (['POST', 'PUT', 'PATCH'].includes(method)) {
         if (bodyType === 'json') {
-          javaBody = `RequestBody.create(MediaType.parse("application/json"), "${body.replace(/"/g, '\\"')}")`;
+          javaBody = `RequestBody.create(MediaType.parse("application/json"), "${escapeDoubleQuoted(body)}")`;
         } else if (bodyType === 'x-www-form-urlencoded') {
           javaBody = `new FormBody.Builder()\n      ${bodyFormUrlEncoded
             .filter((p) => p.enabled && p.key)
             .map((p) => `.add("${p.key}", "${p.value}")`)
             .join('\n      ')}\n      .build()`;
         } else if (bodyType === 'raw') {
-          javaBody = `RequestBody.create(null, "${body.replace(/"/g, '\\"')}")`;
+          javaBody = `RequestBody.create(null, "${escapeDoubleQuoted(body)}")`;
         }
       }
 
@@ -506,7 +527,7 @@ curl_setopt_array($curl, [
   CURLOPT_FOLLOWLOCATION => true,
   CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
   CURLOPT_CUSTOMREQUEST => '${method}',
-  ${body && bodyType !== 'none' ? `CURLOPT_POSTFIELDS => '${body.replace(/'/g, "\\'")}',` : ''}
+  ${body && bodyType !== 'none' ? `CURLOPT_POSTFIELDS => '${escapeSingleQuoted(body)}',` : ''}
   CURLOPT_HTTPHEADER => [
     ${Object.entries(activeHeaders)
       .map(([k, v]) => `'${k}: ${v}'`)
@@ -566,7 +587,7 @@ request = Net::HTTP::${method.charAt(0) + method.slice(1).toLowerCase()}.new(url
 ${Object.entries(activeHeaders)
   .map(([k, v]) => `request["${k}"] = "${v}"`)
   .join('\n')}
-${body && bodyType !== 'none' ? `request.body = '${body.replace(/'/g, "\\'")}'` : ''}
+${body && bodyType !== 'none' ? `request.body = '${escapeSingleQuoted(body)}'` : ''}
 
 response = http.request(request)
 puts response.read_body`;
@@ -586,7 +607,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let res = client.${method.toLowerCase()}("${url}")
         .headers(headers)
-        ${body && bodyType !== 'none' ? `.body("${body.replace(/"/g, '\\"')}")` : ''}
+        ${body && bodyType !== 'none' ? `.body("${escapeDoubleQuoted(body)}")` : ''}
         .send()
         .await?;
 
@@ -603,7 +624,7 @@ let headers = [
     .join(',\n  ')}
 ]
 
-${body && bodyType !== 'none' ? `let postData = NSData(data: "${body.replace(/"/g, '\\"')}".data(using: String.Encoding.utf8)!)` : ''}
+${body && bodyType !== 'none' ? `let postData = NSData(data: "${escapeDoubleQuoted(body)}".data(using: String.Encoding.utf8)!)` : ''}
 
 var request = URLRequest(url: URL(string: "${url}")!,timeoutInterval: Double.infinity)
 request.httpMethod = "${method}"
@@ -629,7 +650,7 @@ NSDictionary *headers = @{
     .join(',\n  ')}
 };
 
-${body && bodyType !== 'none' ? `NSData *postData = [[NSData alloc] initWithData:[@"${body.replace(/"/g, '\\"')}" dataUsingEncoding:NSUTF8StringEncoding]];` : ''}
+${body && bodyType !== 'none' ? `NSData *postData = [[NSData alloc] initWithData:[@"${escapeDoubleQuoted(body)}" dataUsingEncoding:NSUTF8StringEncoding]];` : ''}
 
 NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:@"${url}"]
                                                        cachePolicy:NSURLRequestUseProtocolCachePolicy
@@ -655,7 +676,7 @@ NSURLSessionDataTask *dataTask = [session dataTaskWithRequest:request
 
 (client/${method.toLowerCase()} "${url}"
   {:headers ${JSON.stringify(activeHeaders, null, 2)}
-   ${body && bodyType !== 'none' ? `:body "${body.replace(/"/g, '\\"')}"` : ''}})`;
+   ${body && bodyType !== 'none' ? `:body "${escapeDoubleQuoted(body)}"` : ''}})`;
 
     case 'ocaml_cohttp':
       return `open Lwt
@@ -674,7 +695,7 @@ let main () =
       .map(([k, v]) => `("${k}", "${v}")`)
       .join(';\n    ')}
   ] in
-  ${body && bodyType !== 'none' ? `let body = Cohttp_lwt.Body.of_string "${body.replace(/"/g, '\\"')}" in` : 'let body = Cohttp_lwt.Body.empty in'}
+  ${body && bodyType !== 'none' ? `let body = Cohttp_lwt.Body.of_string "${escapeDoubleQuoted(body)}" in` : 'let body = Cohttp_lwt.Body.empty in'}
   Client.call ~headers ~body \`${method} uri >>= fun (resp, body) ->
   let code = resp |> Response.status |> Code.code_of_status in
   Printf.printf "Response code: %d\\n" code;
@@ -695,7 +716,7 @@ headers = c(
     .join(',\n  ')}
 )
 
-${body && bodyType !== 'none' ? `body = "${body.replace(/"/g, '\\"')}"` : ''}
+${body && bodyType !== 'none' ? `body = "${escapeDoubleQuoted(body)}"` : ''}
 
 res <- VERB("${method}", url = "${url}", add_headers(headers) ${body && bodyType !== 'none' ? ', body = body' : ''})
 

@@ -51,7 +51,7 @@ export const isValidUrl = (str: string): boolean => {
 export const isImageUrl = (str: string): boolean => {
   if (!isValidUrl(str)) return false;
   const imageExtensions = /\.(jpg|jpeg|png|gif|webp|svg|bmp|ico|avif)(\?.*)?$/i;
-  const imageHosts = /(imgur\.com|giphy\.com|unsplash\.com|pexels\.com)/i;
+  const imageHosts = /^https?:\/\/(.*\.)?(imgur\.com|giphy\.com|unsplash\.com|pexels\.com)/i;
   return imageExtensions.test(str) || imageHosts.test(str);
 };
 

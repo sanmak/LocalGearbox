@@ -8,6 +8,22 @@
  * Parses CURL commands into RequestConfig objects
  */
 
+/**
+ * Safely escapes a string for use in double-quoted strings
+ * IMPORTANT: Escapes backslashes FIRST to prevent double-escaping
+ */
+const escapeDoubleQuoted = (str: string): string => {
+  return str.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+};
+
+/**
+ * Safely escapes a string for use in single-quoted strings
+ * IMPORTANT: Escapes backslashes FIRST to prevent double-escaping
+ */
+const escapeSingleQuoted = (str: string): string => {
+  return str.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+};
+
 import {
   RequestConfig,
   HttpMethod,
@@ -409,23 +425,23 @@ function tryFixJsonBody(body: string): string {
   // Look for patterns like: 'foo' where foo doesn't contain unescaped quotes
   fixed = fixed.replace(
     /:\s*'([^'\\]*(?:\\.[^'\\]*)*)'/g,
-    (_, content) => `: "${content.replace(/"/g, '\\"')}"`,
+    (_, content) => `: "${escapeDoubleQuoted(content)}"`,
   );
 
   // Handle property names with single quotes
   fixed = fixed.replace(
     /'([^'\\]*(?:\\.[^'\\]*)*)'\s*:/g,
-    (_, content) => `"${content.replace(/"/g, '\\"')}":`,
+    (_, content) => `"${escapeDoubleQuoted(content)}":`,
   );
 
   // Handle array values with single quotes
   fixed = fixed.replace(
     /\[\s*'([^'\\]*(?:\\.[^'\\]*)*)'/g,
-    (_, content) => `["${content.replace(/"/g, '\\"')}"`,
+    (_, content) => `["${escapeDoubleQuoted(content)}"`,
   );
   fixed = fixed.replace(
     /,\s*'([^'\\]*(?:\\.[^'\\]*)*)'/g,
-    (_, content) => `, "${content.replace(/"/g, '\\"')}"`,
+    (_, content) => `, "${escapeDoubleQuoted(content)}"`,
   );
 
   // Remove trailing commas before ] or }
@@ -551,7 +567,7 @@ export function toCurl(config: RequestConfig): string {
 
   // Add body
   if (config.body && config.method !== 'GET' && config.method !== 'HEAD') {
-    parts.push(`-d '${config.body.replace(/'/g, "\\'")}'`);
+    parts.push(`-d '${escapeSingleQuoted(config.body)}'`);
   }
 
   return parts.join(' \\\n  ');

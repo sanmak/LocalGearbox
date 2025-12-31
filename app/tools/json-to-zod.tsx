@@ -97,7 +97,8 @@ function formatKey(key: string): string {
   if (/^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(key)) {
     return key;
   }
-  return `"${key.replace(/"/g, '\\"')}"`;
+  // Escape backslashes first to prevent double-escaping
+  return `"${key.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
 }
 
 async function convertJsonToZod(input: string): Promise<string> {

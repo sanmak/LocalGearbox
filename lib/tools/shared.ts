@@ -44,12 +44,17 @@ export const validateInput = (input: string, sizeLimit: number = JSON_SIZE_LIMIT
 
 /**
  * Checks if input is valid XML using DOMParser
+ * Security Note: Uses 'application/xml' MIME type which does not execute scripts.
+ * The parsed document is only used to check for parser errors and is never inserted into the DOM.
  */
 export const isValidXML = (input: string): boolean => {
   try {
     const parser = new DOMParser();
+    // Safe: application/xml MIME type does not execute scripts
+    // The document is only used for validation and never inserted into the DOM
     const doc = parser.parseFromString(input, 'application/xml');
-    return !doc.getElementsByTagName('parsererror').length;
+    const hasErrors = doc.getElementsByTagName('parsererror').length > 0;
+    return !hasErrors;
   } catch {
     return false;
   }
@@ -59,8 +64,10 @@ export const isValidXML = (input: string): boolean => {
  * Validates HTML for security issues (scripts, event handlers)
  */
 export const validateHTMLSecurity = (html: string): void => {
-  // Check for <script> tags
-  const scriptPattern = /<script[^>]*>.*?<\/script>/gis;
+  // Check for <script> tags with comprehensive closing tag matching
+  // Browsers accept </script> with attributes, whitespace, and other variations
+  // Pattern matches: </script>, </script >, </script foo="bar">, etc.
+  const scriptPattern = /<script[^>]*>.*?<\/script(?:\s+[^>]*)?>/gis;
   if (scriptPattern.test(html)) {
     throw new Error('HTML contains <script> tags which are not allowed for security reasons');
   }
