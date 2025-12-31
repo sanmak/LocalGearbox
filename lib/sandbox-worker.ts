@@ -43,10 +43,15 @@ self.onmessage = (e: MessageEvent<WorkerMessage>) => {
   const { script, context } = e.data;
   const logs: string[] = [];
   const testResults: TestResult[] = [];
-  const environmentUpdates: Record<string, string> = {};
+  // Use Map to prevent prototype pollution attacks
+  const environmentUpdatesMap = new Map<string, string>();
 
   if (!script || !script.trim()) {
-    self.postMessage({ environmentUpdates, testResults, logs } as WorkerResult);
+    self.postMessage({
+      environmentUpdates: Object.fromEntries(environmentUpdatesMap),
+      testResults,
+      logs,
+    } as WorkerResult);
     return;
   }
 
@@ -55,7 +60,7 @@ self.onmessage = (e: MessageEvent<WorkerMessage>) => {
     environment: {
       get: (key: string) => context.environment[key],
       set: (key: string, value: string) => {
-        environmentUpdates[key] = value;
+        environmentUpdatesMap.set(key, value);
       },
     },
     test: (name: string, callback: () => void) => {
@@ -144,13 +149,8 @@ self.onmessage = (e: MessageEvent<WorkerMessage>) => {
           safeLog(`Warning: Skipping dangerous property name: ${key}`);
           continue;
         }
-        // Use Object.defineProperty for safer assignment
-        Object.defineProperty(environmentUpdates, key, {
-          value: String(value),
-          writable: true,
-          enumerable: true,
-          configurable: true,
-        });
+        // Use Map.set to safely store user-controlled keys, avoiding prototype pollution
+        environmentUpdatesMap.set(key, String(value));
       }
     }
 
@@ -188,10 +188,14 @@ self.onmessage = (e: MessageEvent<WorkerMessage>) => {
       }
     }
 
-    self.postMessage({ environmentUpdates, testResults, logs } as WorkerResult);
+    self.postMessage({
+      environmentUpdates: Object.fromEntries(environmentUpdatesMap),
+      testResults,
+      logs,
+    } as WorkerResult);
   } catch (err: any) {
     self.postMessage({
-      environmentUpdates,
+      environmentUpdates: Object.fromEntries(environmentUpdatesMap),
       testResults,
       logs,
       error: err.message,
