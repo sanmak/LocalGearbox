@@ -157,6 +157,7 @@ By staying 100% client-side, we guarantee:
 Before seeking review, ensure:
 
 - [x] **Client-Side**: All processing happens in browser, no server-side APIs added.
+- [x] **Security**: Run CodeQL analysis and fix all findings (`./scripts/run-codeql-analysis.sh`).
 - [x] **Linting**: `npm run lint` returns 0 problems.
 - [x] **Formatting**: `npm run format:check` passes.
 - [x] **Types**: `npm run type-check` passes.
@@ -165,6 +166,100 @@ Before seeking review, ensure:
 - [x] **Performance**: No unnecessary re-renders (use `useMemo`/`useCallback`).
 - [x] **Cleanliness**: No commented-out code or `console.log`.
 - [x] **Tests**: All tests pass (`npm run test`) and new code has appropriate test coverage.
+
+## 🔒 Security: CodeQL Analysis
+
+We maintain **zero CodeQL security findings** in source code through automated static analysis.
+
+### Running CodeQL Locally
+
+**Before submitting any PR**, run CodeQL to ensure your changes don't introduce security vulnerabilities:
+
+```bash
+# One-time setup (downloads CodeQL CLI and queries)
+./scripts/setup-codeql.sh
+
+# Run full security analysis
+./scripts/run-codeql-analysis.sh
+
+# View results
+cat codeql-results/analysis-report.txt
+```
+
+### What CodeQL Checks
+
+CodeQL scans for 200+ security vulnerabilities including:
+
+- **Code Injection**: XSS, SQL injection, command injection, prototype pollution
+- **Cryptographic Issues**: Weak algorithms, insecure randomness, insufficient key sizes
+- **Authentication & Authorization**: JWT verification, session fixation, CSRF
+- **Data Exposure**: Information leaks, cleartext storage, logging sensitive data
+- **Input Validation**: Incomplete sanitization, regex DoS, missing anchors
+- **Resource Management**: DoS vulnerabilities, resource exhaustion
+
+### Zero Findings Policy
+
+- ✅ **All PRs** must pass CodeQL checks with zero findings in source code
+- ✅ **Automated scans** run on every PR via GitHub Actions
+- ✅ **Build artifacts excluded**: Findings in `out/`, `node_modules/`, `coverage/` are ignored
+- ✅ **Remediation tracking**: See [CODEQL_REMEDIATION_PLANNER.md](./CODEQL_REMEDIATION_PLANNER.md)
+
+### Common Security Patterns
+
+**Prevent XSS:**
+
+```typescript
+// ❌ Vulnerable
+element.innerHTML = userInput;
+
+// ✅ Safe
+element.textContent = userInput;
+// OR use DOMPurify
+import DOMPurify from 'dompurify';
+element.innerHTML = DOMPurify.sanitize(userInput);
+```
+
+**Prevent Prototype Pollution:**
+
+```typescript
+// ❌ Vulnerable
+for (const [key, value] of Object.entries(userInput)) {
+  obj[key] = value;
+}
+
+// ✅ Safe
+for (const [key, value] of Object.entries(userInput)) {
+  if (key === '__proto__' || key === 'constructor' || key === 'prototype') {
+    continue;
+  }
+  Object.defineProperty(obj, key, {
+    value,
+    writable: true,
+    enumerable: true,
+    configurable: true,
+  });
+}
+```
+
+**Use Cryptographic Randomness:**
+
+```typescript
+// ❌ Insecure (predictable)
+const random = Math.random();
+
+// ✅ Secure (cryptographically strong)
+const array = new Uint32Array(1);
+crypto.getRandomValues(array);
+const random = array[0] / (0xffffffff + 1);
+```
+
+### Resources
+
+- [CODEQL_GUIDE.md](./CODEQL_GUIDE.md) - Complete CodeQL documentation
+- [CODEQL_REMEDIATION_PLANNER.md](./CODEQL_REMEDIATION_PLANNER.md) - Remediation roadmap
+- [CodeQL Documentation](https://codeql.github.com/docs/)
+
+---
 
 ## 🧪 Testing
 

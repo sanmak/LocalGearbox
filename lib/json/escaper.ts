@@ -26,12 +26,13 @@ export const unescapeJsonString = (input: string): string => {
     return JSON.parse(`"${input}"`);
   } catch {
     // If that fails, try common unescapes manually
+    // IMPORTANT: Replace escaped backslashes FIRST to prevent double-unescaping
     return input
+      .replace(/\\\\/g, '\\')
       .replace(/\\n/g, '\n')
       .replace(/\\r/g, '\r')
       .replace(/\\t/g, '\t')
       .replace(/\\"/g, '"')
-      .replace(/\\\\/g, '\\')
       .replace(/\\b/g, '\b')
       .replace(/\\f/g, '\f');
   }

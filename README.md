@@ -495,6 +495,7 @@ LocalGearbox uses a cohesive dark-first design system built on these principles:
 - **Zero Lint Tolerance** — Strictly enforced zero-error/zero-warning linting policy
 - **Automated Formatting** — Consistent code style via Prettier and Git hooks
 - **Security-first** — Input validation, size limits, XSS/XXE protection
+- **Zero CodeQL Issues** — Automated security analysis with CodeQL on every PR
 
 > [!IMPORTANT]
 > **100% Client-Side Architecture:** ALL 80+ tools are completely client-side. Zero server APIs. Zero data transmission.
@@ -565,8 +566,9 @@ We believe open source thrives on community participation. Whether you're fixing
 2. **Clone** your fork: `git clone https://github.com/sanmak/LocalGearbox.git`
 3. **Create a branch**: `git checkout -b feature/my-feature`
 4. **Make changes** and test locally
-5. **Commit** with clear messages: `git commit -m "feat: add new tool"`
-6. **Push** and open a **Pull Request**
+5. **Run security checks**: `./scripts/run-codeql-analysis.sh` (see [CODEQL_GUIDE.md](./CODEQL_GUIDE.md))
+6. **Commit** with clear messages: `git commit -m "feat: add new tool"`
+7. **Push** and open a **Pull Request**
 
 ### Adding a New Tool
 
@@ -586,6 +588,30 @@ Security is a core principle. See [SECURITY.md](./SECURITY.md) for:
 - Security model and guarantees
 - Reporting vulnerabilities
 - Security best practices
+
+### CodeQL Security Analysis
+
+We maintain **zero CodeQL security findings** in our source code through automated static analysis:
+
+- **Automated Scans:** CodeQL runs on every PR and push to `main`
+- **Local Analysis:** Contributors can run `./scripts/run-codeql-analysis.sh` before submitting PRs
+- **Comprehensive Coverage:** Scans for 200+ security vulnerabilities including XSS, SQL injection, prototype pollution, and more
+- **Remediation Tracking:** See [CODEQL_REMEDIATION_PLANNER.md](./CODEQL_REMEDIATION_PLANNER.md) for our roadmap to zero findings
+
+**Quick Start:**
+
+```bash
+# One-time setup
+./scripts/setup-codeql.sh
+
+# Run security analysis
+./scripts/run-codeql-analysis.sh
+
+# View results
+cat codeql-results/analysis-report.txt
+```
+
+See [CODEQL_GUIDE.md](./CODEQL_GUIDE.md) for detailed documentation on running CodeQL locally.
 
 ---
 

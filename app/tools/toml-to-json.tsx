@@ -109,10 +109,10 @@ function parseValue(value: string, _lines?: string[], _lineIndex?: number): unkn
   if (value.startsWith('"') && value.endsWith('"')) {
     return value
       .slice(1, -1)
+      .replace(/\\\\/g, '\\') // Replace escaped backslashes first
       .replace(/\\n/g, '\n')
       .replace(/\\t/g, '\t')
       .replace(/\\r/g, '\r')
-      .replace(/\\\\/g, '\\')
       .replace(/\\"/g, '"');
   }
 

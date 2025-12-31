@@ -161,7 +161,8 @@ function formatPropertyName(key: string): string {
   if (isValidIdentifier(key)) {
     return key;
   }
-  return `"${key.replace(/"/g, '\\"')}"`;
+  // Escape backslashes first to prevent double-escaping
+  return `"${key.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
 }
 
 function interfacesToString(interfaces: Map<string, InterfaceInfo>): string {

@@ -5,13 +5,13 @@
 
 import { Metadata } from 'next';
 import Link from 'next/link';
+import { getAllToolsByCategory, TOOL_CATEGORIES, TOOLS } from '@/lib/tool-registry';
+import { TEXTS } from '@/lib/constants/texts';
 
 export const metadata: Metadata = {
   title: TEXTS.metadata.homeTitle,
   description: TEXTS.metadata.homeDescription,
 };
-import { getAllToolsByCategory, TOOL_CATEGORIES, TOOLS } from '@/lib/tool-registry';
-import { TEXTS } from '@/lib/constants/texts';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Lock, Zap, Shield, Keyboard, Eye, Github, ChevronRight } from 'lucide-react';

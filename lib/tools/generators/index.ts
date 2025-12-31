@@ -9,6 +9,16 @@
  */
 
 /**
+ * Gets cryptographically secure random value between 0 and max (exclusive)
+ * Uses crypto.getRandomValues for better security than Math.random
+ */
+const getSecureRandom = (max: number): number => {
+  const array = new Uint32Array(1);
+  crypto.getRandomValues(array);
+  return Math.floor((array[0] / (0xffffffff + 1)) * max);
+};
+
+/**
  * Generates UUID v4 (random)
  */
 export const generateUUID = async (): Promise<string> => {
@@ -21,13 +31,9 @@ export const generateUUID = async (): Promise<string> => {
 export const generateUUIDv1 = (): string => {
   const timestamp = Date.now();
   const timeHex = timestamp.toString(16).padStart(12, '0');
-  const clockSeq = Math.floor(Math.random() * 16384)
-    .toString(16)
-    .padStart(4, '0');
+  const clockSeq = getSecureRandom(16384).toString(16).padStart(4, '0');
   const node = Array.from({ length: 6 }, () =>
-    Math.floor(Math.random() * 256)
-      .toString(16)
-      .padStart(2, '0'),
+    getSecureRandom(256).toString(16).padStart(2, '0'),
   ).join('');
 
   return `${timeHex.slice(0, 8)}-${timeHex.slice(8)}-1${clockSeq.slice(
@@ -60,7 +66,7 @@ export const generateUUIDv3 = (namespace: string, name: string): string => {
  */
 export const generateUUIDv4 = (): string => {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
+    const r = getSecureRandom(16);
     const v = c === 'x' ? r : (r & 0x3) | 0x8;
     return v.toString(16);
   });
@@ -90,9 +96,7 @@ export const generateUUIDv5 = (namespace: string, name: string): string => {
  */
 export const generateTimestampFirstUUID = (): string => {
   const timestamp = Date.now().toString(16).padStart(12, '0');
-  const random = Array.from({ length: 20 }, () => Math.floor(Math.random() * 16).toString(16)).join(
-    '',
-  );
+  const random = Array.from({ length: 20 }, () => getSecureRandom(16).toString(16)).join('');
 
   return `${timestamp}-${random.slice(0, 4)}-4${random.slice(
     4,

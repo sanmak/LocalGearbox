@@ -59,8 +59,8 @@ export const isValidXML = (input: string): boolean => {
  * Validates HTML for security issues (scripts, event handlers)
  */
 export const validateHTMLSecurity = (html: string): void => {
-  // Check for <script> tags
-  const scriptPattern = /<script[^>]*>.*?<\/script>/gis;
+  // Check for <script> tags (including variations with whitespace in closing tags)
+  const scriptPattern = /<script[^>]*>.*?<\/script\s*>/gis;
   if (scriptPattern.test(html)) {
     throw new Error('HTML contains <script> tags which are not allowed for security reasons');
   }

@@ -29,6 +29,17 @@ interface WorkerResult {
 }
 
 self.onmessage = (e: MessageEvent<WorkerMessage>) => {
+  // Validate message structure for security
+  if (!e.data || typeof e.data !== 'object') {
+    console.error('Invalid message received by worker: message data is not an object');
+    return;
+  }
+
+  if (!e.data.script || typeof e.data.script !== 'string') {
+    console.error('Invalid message received by worker: missing or invalid script property');
+    return;
+  }
+
   const { script, context } = e.data;
   const logs: string[] = [];
   const testResults: TestResult[] = [];
@@ -123,7 +134,23 @@ self.onmessage = (e: MessageEvent<WorkerMessage>) => {
 
     if (payload.envUpdates) {
       for (const [key, value] of Object.entries(payload.envUpdates)) {
-        environmentUpdates[key] = String(value);
+        // Prevent prototype pollution by rejecting dangerous property names
+        if (
+          key === '__proto__' ||
+          key === 'constructor' ||
+          key === 'prototype' ||
+          !Object.prototype.hasOwnProperty.call(payload.envUpdates, key)
+        ) {
+          safeLog(`Warning: Skipping dangerous property name: ${key}`);
+          continue;
+        }
+        // Use Object.defineProperty for safer assignment
+        Object.defineProperty(environmentUpdates, key, {
+          value: String(value),
+          writable: true,
+          enumerable: true,
+          configurable: true,
+        });
       }
     }
 
