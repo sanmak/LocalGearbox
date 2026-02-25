@@ -46,6 +46,7 @@ const toolComponents = {
   'json-validator': dynamic(() => import('@/app/tools/json-validator').then((mod) => mod.default)),
   'xml-formatter': dynamic(() => import('@/app/tools/xml-formatter').then((mod) => mod.default)),
   'xml-validator': dynamic(() => import('@/app/tools/xml-validator').then((mod) => mod.default)),
+  'regex-tester': dynamic(() => import('@/app/tools/regex-tester').then((mod) => mod.default)),
   'url-encoder-decoder': dynamic(() =>
     import('@/app/tools/url-encoder-decoder').then((mod) => mod.default),
   ),
@@ -62,6 +63,7 @@ const toolComponents = {
   'sha256-hash': dynamic(() => import('@/app/tools/sha256-hash').then((mod) => mod.default)),
   'sha512-hash': dynamic(() => import('@/app/tools/sha512-hash').then((mod) => mod.default)),
   'uuid-generator': dynamic(() => import('@/app/tools/uuid-generator').then((mod) => mod.default)),
+  'lorem-ipsum': dynamic(() => import('@/app/tools/lorem-ipsum').then((mod) => mod.default)),
   'jwt-decoder': dynamic(() => import('@/app/tools/jwt-decoder').then((mod) => mod.default)),
   'epoch-to-date': dynamic(() => import('@/app/tools/epoch-to-date').then((mod) => mod.default)),
   'date-to-epoch': dynamic(() => import('@/app/tools/date-to-epoch').then((mod) => mod.default)),
@@ -98,6 +100,9 @@ const toolComponents = {
   'dns-traversal': dynamic(() => import('@/app/tools/dns-traversal').then((mod) => mod.default)),
   'namespace-server-delegation': dynamic(() =>
     import('@/app/tools/namespace-server-delegation').then((mod) => mod.default),
+  ),
+  'subnet-calculator': dynamic(() =>
+    import('@/app/tools/subnet-calculator').then((mod) => mod.default),
   ),
   'responsive-tester': dynamic(() =>
     import('@/app/tools/responsive-tester').then((mod) => mod.default),

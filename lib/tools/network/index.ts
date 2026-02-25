@@ -72,3 +72,13 @@ export const reverseDnsLookup = async (_input: string): Promise<string> => {
 export const nameServerLookup = async (_input: string): Promise<string> => {
   return JSON.stringify({ message: 'Use Name Server Lookup page' });
 };
+
+// Export subnet calculator
+export { subnetCalculator, calculateSubnet } from './subnet-calculator';
+export type {
+  SubnetInput,
+  SubnetResult,
+  IPv4Result,
+  IPv6Result,
+  SubnetError,
+} from './subnet-calculator';

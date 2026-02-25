@@ -5,6 +5,13 @@
 
 import { ApiRequest } from './stores/api-client-store';
 
+interface AxiosConfigSnippet {
+  method: string;
+  url: string;
+  headers: Record<string, string>;
+  data?: string | Record<string, unknown>;
+}
+
 /**
  * Safely escapes a string for use in double-quoted strings
  * IMPORTANT: Escapes backslashes FIRST to prevent double-escaping
@@ -32,7 +39,10 @@ export type CodeLanguage =
   | 'clojure_clj_http'
   | 'csharp_httpclient'
   | 'csharp_restsharp'
+  | 'dart_http'
+  | 'elixir_httpoison'
   | 'go_native'
+  | 'haskell_http_conduit'
   | 'http_raw'
   | 'java_asynchttpclient'
   | 'java_net_http'
@@ -42,10 +52,13 @@ export type CodeLanguage =
   | 'javascript_axios'
   | 'javascript_jquery'
   | 'javascript_xhr'
+  | 'julia_http'
   | 'kotlin_okhttp'
+  | 'lua_socket_http'
   | 'nodejs_axios'
   | 'objectivec_nsurlsession'
   | 'ocaml_cohttp'
+  | 'perl_lwp'
   | 'php_curl'
   | 'php_guzzle'
   | 'powershell_restmethod'
@@ -55,6 +68,7 @@ export type CodeLanguage =
   | 'r_httr'
   | 'ruby_net_http'
   | 'rust_reqwest'
+  | 'scala_sttp'
   | 'shell_httpie'
   | 'shell_wget'
   | 'swift_nsurlsession';
@@ -324,7 +338,7 @@ println(response.body?.string())`;
 const data = await response.json();`;
 
     case 'nodejs_axios':
-      const nodeAxiosConfig: any = {
+      const nodeAxiosConfig: AxiosConfigSnippet = {
         method: method.toLowerCase(),
         url: url,
         headers: activeHeaders,
@@ -346,7 +360,7 @@ const response = await axios(${JSON.stringify(nodeAxiosConfig, null, 2)});
 console.log(response.data);`;
 
     case 'javascript_axios':
-      let axiosConfig: any = {
+      const axiosConfig: AxiosConfigSnippet = {
         method: method.toLowerCase(),
         url: url,
         headers: activeHeaders,
@@ -722,7 +736,169 @@ res <- VERB("${method}", url = "${url}", add_headers(headers) ${body && bodyType
 
 cat(content(res, "text"))`;
 
-    default:
-      return `// Code generation for ${language} coming soon...`;
+    case 'dart_http':
+      return `import 'package:http/http.dart' as http;
+import 'dart:convert';
+
+void main() async {
+  var url = Uri.parse('${url}');
+  var headers = {
+    ${Object.entries(activeHeaders)
+      .map(([k, v]) => `'${k}': '${escapeSingleQuoted(v)}'`)
+      .join(',\n    ')}
+  };
+
+  ${
+    ['POST', 'PUT', 'PATCH'].includes(method) && bodyType !== 'none'
+      ? `var response = await http.${method.toLowerCase()}(
+    url,
+    headers: headers,
+    body: '${escapeSingleQuoted(body)}',
+  );`
+      : `var response = await http.${method.toLowerCase()}(url, headers: headers);`
+  }
+
+  print('Status: \${response.statusCode}');
+  print('Body: \${response.body}');
+}`;
+
+    case 'elixir_httpoison':
+      return `# Add {:httpoison, "~> 2.0"} to mix.exs deps
+
+url = "${url}"
+headers = [
+  ${Object.entries(activeHeaders)
+    .map(([k, v]) => `{"${k}", "${escapeDoubleQuoted(v)}"}`)
+    .join(',\n  ')}
+]
+
+${
+  ['POST', 'PUT', 'PATCH'].includes(method) && bodyType !== 'none'
+    ? `body = "${escapeDoubleQuoted(body)}"
+
+{:ok, response} = HTTPoison.${method.toLowerCase()}(url, body, headers)`
+    : `{:ok, response} = HTTPoison.${method.toLowerCase()}(url, headers)`
+}
+
+IO.puts(response.status_code)
+IO.puts(response.body)`;
+
+    case 'haskell_http_conduit':
+      return `{-# LANGUAGE OverloadedStrings #-}
+
+import Network.HTTP.Simple
+import qualified Data.ByteString.Char8 as BS
+import qualified Data.ByteString.Lazy.Char8 as LBS
+
+main :: IO ()
+main = do
+  let request
+        = setRequestMethod "${method}"
+        $ setRequestSecure ${url.startsWith('https') ? 'True' : 'False'}
+        ${Object.entries(activeHeaders)
+          .map(([k, v]) => `$ addRequestHeader "${k}" "${escapeDoubleQuoted(v)}"`)
+          .join('\n        ')}
+        ${['POST', 'PUT', 'PATCH'].includes(method) && bodyType !== 'none' ? `$ setRequestBodyLBS "${escapeDoubleQuoted(body)}"` : ''}
+        $ parseRequest_ "${url}"
+
+  response <- httpLBS request
+  BS.putStrLn $ "Status: " <> BS.pack (show (getResponseStatusCode response))
+  LBS.putStrLn $ getResponseBody response`;
+
+    case 'julia_http':
+      return `using HTTP
+
+url = "${url}"
+headers = [
+    ${Object.entries(activeHeaders)
+      .map(([k, v]) => `"${k}" => "${escapeDoubleQuoted(v)}"`)
+      .join(',\n    ')}
+]
+
+${
+  ['POST', 'PUT', 'PATCH'].includes(method) && bodyType !== 'none'
+    ? `body = """${body.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"""
+
+response = HTTP.request("${method}", url, headers, body)`
+    : `response = HTTP.request("${method}", url, headers)`
+}
+
+println("Status: ", response.status)
+println("Body: ", String(response.body))`;
+
+    case 'lua_socket_http': {
+      const luaUrl = new URL(url);
+      const luaLib = luaUrl.protocol === 'https:' ? 'ssl.https' : 'socket.http';
+      return `local ${luaUrl.protocol === 'https:' ? 'https' : 'http'} = require("${luaLib}")
+local ltn12 = require("ltn12")
+
+local response_body = {}
+
+${['POST', 'PUT', 'PATCH'].includes(method) && bodyType !== 'none' ? `local request_body = [[${body}]]` : ''}
+
+local res, code, response_headers = ${luaUrl.protocol === 'https:' ? 'https' : 'http'}.request{
+  url = "${url}",
+  method = "${method}",
+  headers = {
+    ${Object.entries(activeHeaders)
+      .map(([k, v]) => `["${k}"] = "${escapeDoubleQuoted(v)}"`)
+      .join(
+        ',\n    ',
+      )}${['POST', 'PUT', 'PATCH'].includes(method) && bodyType !== 'none' ? `,\n    ["Content-Length"] = #request_body` : ''}
+  },
+  ${['POST', 'PUT', 'PATCH'].includes(method) && bodyType !== 'none' ? 'source = ltn12.source.string(request_body),' : ''}
+  sink = ltn12.sink.table(response_body),
+}
+
+print("Status: " .. tostring(code))
+print("Body: " .. table.concat(response_body))`;
+    }
+
+    case 'perl_lwp':
+      return `use strict;
+use warnings;
+use LWP::UserAgent;
+use HTTP::Request;
+
+my $ua = LWP::UserAgent->new;
+my $url = '${escapeSingleQuoted(url)}';
+
+my $req = HTTP::Request->new('${method}' => $url);
+${Object.entries(activeHeaders)
+  .map(([k, v]) => `$req->header('${k}' => '${escapeSingleQuoted(v)}');`)
+  .join('\n')}
+${['POST', 'PUT', 'PATCH'].includes(method) && bodyType !== 'none' ? `$req->content('${escapeSingleQuoted(body)}');` : ''}
+
+my $res = $ua->request($req);
+
+if ($res->is_success) {
+    print $res->decoded_content;
+} else {
+    die $res->status_line;
+}`;
+
+    case 'scala_sttp':
+      return `//> using dep "com.softwaremill.sttp.client4::core:4.0.0-M6"
+
+import sttp.client4._
+
+val backend = DefaultSyncBackend()
+
+val request = basicRequest
+  .method(Method("${method}"), uri"${url}")
+  ${Object.entries(activeHeaders)
+    .map(([k, v]) => `.header("${k}", "${escapeDoubleQuoted(v)}")`)
+    .join('\n  ')}
+  ${['POST', 'PUT', 'PATCH'].includes(method) && bodyType !== 'none' ? `.body("${escapeDoubleQuoted(body)}")` : ''}
+
+val response = request.send(backend)
+
+println(s"Status: \${response.code}")
+println(s"Body: \${response.body}")`;
+
+    default: {
+      const _exhaustiveCheck: never = language;
+      return `// Unknown language: ${_exhaustiveCheck}`;
+    }
   }
 }

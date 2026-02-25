@@ -209,6 +209,9 @@ export const epochToDate = async (input: string): Promise<string> => {
 /**
  * Converts date to epoch timestamp
  */
+// Lorem Ipsum Generator
+export { generateLoremIpsumText } from './lorem-ipsum';
+
 export const dateToEpoch = async (input: string): Promise<string> => {
   if (!input.trim()) {
     throw new Error('Input cannot be empty');
