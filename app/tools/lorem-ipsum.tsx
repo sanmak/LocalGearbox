@@ -125,7 +125,7 @@ export default function LoremIpsumPage() {
     [currentConfig],
   );
 
-  const wordCount = countWords(output.replace(/<[^>]*>/g, ''));
+  const wordCount = countWords(output.replace(/[<>]/g, ''));
   const charCount = output.length;
 
   return (

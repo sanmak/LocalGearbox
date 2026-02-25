@@ -57,6 +57,31 @@ const sanitizeFlags = (flags: string): string => {
 };
 
 /**
+ * Extracts a RegexMatch from a RegExpExecArray result
+ */
+const extractMatch = (match: RegExpExecArray): RegexMatch => {
+  const namedGroups: Record<string, string | undefined> = {};
+  if (match.groups) {
+    for (const [key, value] of Object.entries(match.groups)) {
+      namedGroups[key] = value;
+    }
+  }
+
+  const captureGroups: (string | undefined)[] = [];
+  for (let i = 1; i < match.length; i++) {
+    captureGroups.push(match[i]);
+  }
+
+  return {
+    fullMatch: match[0],
+    index: match.index,
+    length: match[0].length,
+    groups: namedGroups,
+    captureGroups,
+  };
+};
+
+/**
  * Tests a regex pattern against a test string and returns match results
  */
 export const testRegex = async (input: string): Promise<string> => {
@@ -147,48 +172,12 @@ export const testRegex = async (input: string): Promise<string> => {
       }
       lastIndex = match.index;
 
-      const namedGroups: Record<string, string | undefined> = {};
-      if (match.groups) {
-        for (const [key, value] of Object.entries(match.groups)) {
-          namedGroups[key] = value;
-        }
-      }
-
-      const captureGroups: (string | undefined)[] = [];
-      for (let i = 1; i < match.length; i++) {
-        captureGroups.push(match[i]);
-      }
-
-      matches.push({
-        fullMatch: match[0],
-        index: match.index,
-        length: match[0].length,
-        groups: namedGroups,
-        captureGroups,
-      });
+      matches.push(extractMatch(match));
     }
   } else {
     const match = regex.exec(testString);
     if (match) {
-      const namedGroups: Record<string, string | undefined> = {};
-      if (match.groups) {
-        for (const [key, value] of Object.entries(match.groups)) {
-          namedGroups[key] = value;
-        }
-      }
-
-      const captureGroups: (string | undefined)[] = [];
-      for (let i = 1; i < match.length; i++) {
-        captureGroups.push(match[i]);
-      }
-
-      matches.push({
-        fullMatch: match[0],
-        index: match.index,
-        length: match[0].length,
-        groups: namedGroups,
-        captureGroups,
-      });
+      matches.push(extractMatch(match));
     }
   }
 

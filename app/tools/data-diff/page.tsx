@@ -140,33 +140,25 @@ export default function DataDiffPage() {
 
   /* ---------- File upload ---------- */
 
-  const handleLeftFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const content = event.target?.result as string;
-      setLeftInput(content);
-      setError(null);
-    };
-    reader.onerror = () => setError('Failed to read file');
-    reader.readAsText(file);
-    e.target.value = '';
-  }, []);
+  const createFileUploadHandler = useCallback(
+    (setter: (value: string) => void) => (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const content = event.target?.result as string;
+        setter(content);
+        setError(null);
+      };
+      reader.onerror = () => setError('Failed to read file');
+      reader.readAsText(file);
+      e.target.value = '';
+    },
+    [],
+  );
 
-  const handleRightFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const content = event.target?.result as string;
-      setRightInput(content);
-      setError(null);
-    };
-    reader.onerror = () => setError('Failed to read file');
-    reader.readAsText(file);
-    e.target.value = '';
-  }, []);
+  const handleLeftFileUpload = createFileUploadHandler(setLeftInput);
+  const handleRightFileUpload = createFileUploadHandler(setRightInput);
 
   /* ---------- Sample data ---------- */
 
@@ -263,6 +255,18 @@ ${diffResult.changes
     await navigator.clipboard.writeText(summary);
   }, [diffResult]);
 
+  const downloadBlob = useCallback((content: string, filename: string, mimeType: string) => {
+    const blob = new Blob([content], { type: mimeType });
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(blobUrl);
+  }, []);
+
   const handleDownloadReport = useCallback(() => {
     if (!diffResult) return;
 
@@ -318,16 +322,8 @@ ${diffResult.changes
 </body>
 </html>`;
 
-    const blob = new Blob([html], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `diff-report-${Date.now()}.html`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }, [diffResult]);
+    downloadBlob(html, `diff-report-${Date.now()}.html`, 'text/html');
+  }, [diffResult, downloadBlob]);
 
   const handleDownloadPatch = useCallback(() => {
     if (!diffResult) return;
@@ -396,16 +392,8 @@ ${diffResult.changes
       }
     }
 
-    const blob = new Blob([patch], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `diff-patch-${Date.now()}.patch`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }, [diffResult, format, detectedFormat]);
+    downloadBlob(patch, `diff-patch-${Date.now()}.patch`, 'text/plain');
+  }, [diffResult, format, detectedFormat, downloadBlob]);
 
   /* ---------- Keyboard shortcuts ---------- */
 

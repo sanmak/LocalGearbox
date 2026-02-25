@@ -338,28 +338,7 @@ println(response.body?.string())`;
 const data = await response.json();`;
 
     case 'nodejs_axios':
-      const nodeAxiosConfig: AxiosConfigSnippet = {
-        method: method.toLowerCase(),
-        url: url,
-        headers: activeHeaders,
-      };
-      if (['POST', 'PUT', 'PATCH'].includes(method)) {
-        if (bodyType === 'json') nodeAxiosConfig.data = safeParse(body);
-        else if (bodyType === 'x-www-form-urlencoded') {
-          const params = new URLSearchParams();
-          bodyFormUrlEncoded.forEach((p) => {
-            if (p.enabled && p.key) params.append(p.key, p.value);
-          });
-          nodeAxiosConfig.data = params.toString();
-        } else if (bodyType === 'raw') nodeAxiosConfig.data = body;
-      }
-
-      return `const axios = require('axios');
-
-const response = await axios(${JSON.stringify(nodeAxiosConfig, null, 2)});
-console.log(response.data);`;
-
-    case 'javascript_axios':
+    case 'javascript_axios': {
       const axiosConfig: AxiosConfigSnippet = {
         method: method.toLowerCase(),
         url: url,
@@ -376,10 +355,16 @@ console.log(response.data);`;
         } else if (bodyType === 'raw') axiosConfig.data = body;
       }
 
-      return `import axios from 'axios';
+      const axiosImport =
+        language === 'nodejs_axios'
+          ? `const axios = require('axios');`
+          : `import axios from 'axios';`;
+
+      return `${axiosImport}
 
 const response = await axios(${JSON.stringify(axiosConfig, null, 2)});
 console.log(response.data);`;
+    }
 
     case 'python_requests':
       let pyHeaders = JSON.stringify(activeHeaders, null, 4);
@@ -555,26 +540,20 @@ curl_close($curl);
 echo $response;`;
 
     case 'powershell_restmethod':
-      return `$headers = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
-${Object.entries(activeHeaders)
-  .map(([k, v]) => `$headers.Add("${k}", "${v}")`)
-  .join('\n')}
+    case 'powershell_webrequest': {
+      const psHeaders = `$headers = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"\n${Object.entries(
+        activeHeaders,
+      )
+        .map(([k, v]) => `$headers.Add("${k}", "${v}")`)
+        .join('\n')}`;
+      const psBody = body && bodyType !== 'none' ? `$body = "${body.replace(/"/g, '`"')}"` : '';
+      const psBodyFlag = body && bodyType !== 'none' ? '-Body $body' : '';
 
-${body && bodyType !== 'none' ? `$body = "${body.replace(/"/g, '`"')}"` : ''}
-
-$response = Invoke-RestMethod '${url}' -Method '${method}' -Headers $headers ${body && bodyType !== 'none' ? '-Body $body' : ''}
-$response | ConvertTo-Json`;
-
-    case 'powershell_webrequest':
-      return `$headers = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
-${Object.entries(activeHeaders)
-  .map(([k, v]) => `$headers.Add("${k}", "${v}")`)
-  .join('\n')}
-
-${body && bodyType !== 'none' ? `$body = "${body.replace(/"/g, '`"')}"` : ''}
-
-$response = Invoke-WebRequest -Uri '${url}' -Method '${method}' -Headers $headers ${body && bodyType !== 'none' ? '-Body $body' : ''}
-$response.Content`;
+      if (language === 'powershell_restmethod') {
+        return `${psHeaders}\n\n${psBody}\n\n$response = Invoke-RestMethod '${url}' -Method '${method}' -Headers $headers ${psBodyFlag}\n$response | ConvertTo-Json`;
+      }
+      return `${psHeaders}\n\n${psBody}\n\n$response = Invoke-WebRequest -Uri '${url}' -Method '${method}' -Headers $headers ${psBodyFlag}\n$response.Content`;
+    }
 
     case 'python_http_client':
       const pyUrl = new URL(url);
