@@ -43,9 +43,9 @@ export const generateUUIDv1 = (): string => {
 };
 
 /**
- * Generates UUID v3 (MD5-based name)
+ * Generates a name-based UUID (shared logic for v3 and v5)
  */
-export const generateUUIDv3 = (namespace: string, name: string): string => {
+const generateNameBasedUUID = (namespace: string, name: string, version: 3 | 5): string => {
   const combined = namespace + name;
   let hash = 0;
   for (let i = 0; i < combined.length; i++) {
@@ -55,10 +55,17 @@ export const generateUUIDv3 = (namespace: string, name: string): string => {
   }
 
   const hex = Math.abs(hash).toString(16).padStart(8, '0');
-  return `${hex.slice(0, 8)}-${hex.slice(0, 4)}-3${hex.slice(
+  return `${hex.slice(0, 8)}-${hex.slice(0, 4)}-${version}${hex.slice(
     0,
     3,
   )}-8${hex.slice(0, 3)}-${hex.padEnd(12, '0')}`;
+};
+
+/**
+ * Generates UUID v3 (MD5-based name)
+ */
+export const generateUUIDv3 = (namespace: string, name: string): string => {
+  return generateNameBasedUUID(namespace, name, 3);
 };
 
 /**
@@ -76,19 +83,7 @@ export const generateUUIDv4 = (): string => {
  * Generates UUID v5 (SHA1-based name)
  */
 export const generateUUIDv5 = (namespace: string, name: string): string => {
-  const combined = namespace + name;
-  let hash = 0;
-  for (let i = 0; i < combined.length; i++) {
-    const char = combined.charCodeAt(i);
-    hash = (hash << 5) - hash + char;
-    hash = hash & hash;
-  }
-
-  const hex = Math.abs(hash).toString(16).padStart(8, '0');
-  return `${hex.slice(0, 8)}-${hex.slice(0, 4)}-5${hex.slice(
-    0,
-    3,
-  )}-8${hex.slice(0, 3)}-${hex.padEnd(12, '0')}`;
+  return generateNameBasedUUID(namespace, name, 5);
 };
 
 /**
@@ -164,81 +159,58 @@ export const generateBulkUUIDs = (
   return uuids;
 };
 
+// Lorem Ipsum Generator
+export { generateLoremIpsumText } from './lorem-ipsum';
+
+const withInputValidation = async <T>(
+  input: string,
+  fallbackError: string,
+  fn: (input: string) => T,
+): Promise<string> => {
+  if (!input.trim()) {
+    throw new Error('Input cannot be empty');
+  }
+  try {
+    return JSON.stringify(fn(input), null, 2);
+  } catch (error) {
+    if (error instanceof Error) throw error;
+    throw new Error(fallbackError);
+  }
+};
+
 /**
  * Converts epoch timestamp to human-readable date
  */
 export const epochToDate = async (input: string): Promise<string> => {
-  if (!input.trim()) {
-    throw new Error('Input cannot be empty');
-  }
-
-  try {
-    const epoch = parseInt(input, 10);
-
-    if (isNaN(epoch)) {
-      throw new Error('Invalid epoch timestamp');
-    }
-
-    // Detect if milliseconds or seconds
+  return withInputValidation(input, 'Failed to convert epoch to date', (inp) => {
+    const epoch = parseInt(inp, 10);
+    if (isNaN(epoch)) throw new Error('Invalid epoch timestamp');
     const timestamp = epoch > 10000000000 ? epoch : epoch * 1000;
     const date = new Date(timestamp);
-
-    if (isNaN(date.getTime())) {
-      throw new Error('Invalid timestamp value');
-    }
-
-    return JSON.stringify(
-      {
-        epoch: input,
-        iso: date.toISOString(),
-        utc: date.toUTCString(),
-        local: date.toLocaleString(),
-        timestamp: date.getTime(),
-      },
-      null,
-      2,
-    );
-  } catch (error) {
-    if (error instanceof Error) {
-      throw error;
-    }
-    throw new Error('Failed to convert epoch to date');
-  }
+    if (isNaN(date.getTime())) throw new Error('Invalid timestamp value');
+    return {
+      epoch: inp,
+      iso: date.toISOString(),
+      utc: date.toUTCString(),
+      local: date.toLocaleString(),
+      timestamp: date.getTime(),
+    };
+  });
 };
 
 /**
  * Converts date to epoch timestamp
  */
-// Lorem Ipsum Generator
-export { generateLoremIpsumText } from './lorem-ipsum';
-
 export const dateToEpoch = async (input: string): Promise<string> => {
-  if (!input.trim()) {
-    throw new Error('Input cannot be empty');
-  }
-
-  try {
-    const date = new Date(input);
-
-    if (isNaN(date.getTime())) {
-      throw new Error('Invalid date format');
-    }
-
-    return JSON.stringify(
-      {
-        input: input,
-        milliseconds: date.getTime(),
-        seconds: Math.floor(date.getTime() / 1000),
-        iso: date.toISOString(),
-        utc: date.toUTCString(),
-      },
-      null,
-      2,
-    );
-  } catch (error) {
-    if (error instanceof Error) {
-      throw error;
-    }
-    throw new Error('Failed to convert date to epoch');
-  }
+  return withInputValidation(input, 'Failed to convert date to epoch', (inp) => {
+    const date = new Date(inp);
+    if (isNaN(date.getTime())) throw new Error('Invalid date format');
+    return {
+      input: inp,
+      milliseconds: date.getTime(),
+      seconds: Math.floor(date.getTime() / 1000),
+      iso: date.toISOString(),
+      utc: date.toUTCString(),
+    };
+  });
 };
