@@ -307,8 +307,8 @@ function getIPv6AddressType(expanded: string): string {
     return 'Link-Local';
   }
 
-  // Unique local: fc00::/7
-  if (firstNibble === 0xf && (parseInt(firstGroup.charAt(1), 16) & 0xc) === 0xc) {
+  // Unique local: fc00::/7 (fc/fd only, not fe/ff)
+  if (firstNibble === 0xf && (parseInt(firstGroup.charAt(1), 16) & 0xe) === 0xc) {
     return 'Unique Local (ULA)';
   }
 

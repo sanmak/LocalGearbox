@@ -192,7 +192,7 @@ export function OptionsPanel({ format, options, onChange }: OptionsPanelProps) {
                     onChange={(e) => {
                       const val = e.target.value;
                       if (val.trim() === '') {
-                        handleChange('keyColumns', [] as string[]);
+                        handleChange('keyColumns', undefined);
                       } else {
                         handleChange(
                           'keyColumns',

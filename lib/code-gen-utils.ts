@@ -118,15 +118,22 @@ export function generateCodeSnippet(language: CodeLanguage, request: ApiRequest)
   };
 
   const activeHeaders = getActiveHeaders();
+  const headerEntries = Object.entries(activeHeaders);
+  const methodHasBody = ['POST', 'PUT', 'PATCH'].includes(method);
+  const hasBody = methodHasBody && body && bodyType !== 'none';
+  const contentType = activeHeaders['Content-Type'] || 'text/plain';
+
+  const mapHeaders = (fmt: (k: string, v: string) => string, sep: string = '\n'): string =>
+    headerEntries.map(([k, v]) => fmt(k, v)).join(sep);
 
   switch (language) {
     case 'curl':
       let curl = `curl -X ${method} '${url}'`;
-      Object.entries(activeHeaders).forEach(([k, v]) => {
+      headerEntries.forEach(([k, v]) => {
         curl += ` \\\n  -H '${k}: ${v}'`;
       });
 
-      if (['POST', 'PUT', 'PATCH'].includes(method)) {
+      if (methodHasBody) {
         if (bodyType === 'json' || bodyType === 'raw') {
           curl += ` \\\n  -d '${body}'`;
         } else if (bodyType === 'x-www-form-urlencoded') {
@@ -149,7 +156,7 @@ export function generateCodeSnippet(language: CodeLanguage, request: ApiRequest)
 
     case 'shell_httpie':
       let httpie = `http ${method} ${url}`;
-      Object.entries(activeHeaders).forEach(([k, v]) => {
+      headerEntries.forEach(([k, v]) => {
         httpie += ` '${k}:${v}'`;
       });
       if (bodyType === 'json' && body) {
@@ -159,10 +166,10 @@ export function generateCodeSnippet(language: CodeLanguage, request: ApiRequest)
 
     case 'shell_wget':
       let wget = `wget --method=${method} --header='Host: ${new URL(url).host}'`;
-      Object.entries(activeHeaders).forEach(([k, v]) => {
+      headerEntries.forEach(([k, v]) => {
         wget += ` --header='${k}: ${v}'`;
       });
-      if (body && bodyType !== 'none') {
+      if (hasBody) {
         wget += ` --body-data='${body}'`;
       }
       wget += ` '${url}'`;
@@ -171,10 +178,10 @@ export function generateCodeSnippet(language: CodeLanguage, request: ApiRequest)
     case 'http_raw':
       const urlObj = new URL(url);
       let raw = `${method} ${urlObj.pathname}${urlObj.search} HTTP/1.1\nHost: ${urlObj.host}`;
-      Object.entries(activeHeaders).forEach(([k, v]) => {
+      headerEntries.forEach(([k, v]) => {
         raw += `\n${k}: ${v}`;
       });
-      if (body && bodyType !== 'none') {
+      if (hasBody) {
         raw += `\n\n${body}`;
       }
       return raw;
@@ -190,15 +197,13 @@ int main(void) {
   curl = curl_easy_init();
   if(curl) {
     struct curl_slist *headers = NULL;
-    ${Object.entries(activeHeaders)
-      .map(([k, v]) => `headers = curl_slist_append(headers, "${k}: ${v}");`)
-      .join('\n    ')}
+    ${mapHeaders((k, v) => `headers = curl_slist_append(headers, "${k}: ${v}");`, '\n    ')}
 
     curl_easy_setopt(curl, CURLOPT_URL, "${url}");
     curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "${method}");
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
-    ${body && bodyType !== 'none' ? `curl_easy_setopt(curl, CURLOPT_POSTFIELDS, "${escapeDoubleQuoted(body)}");` : ''}
+    ${hasBody ? `curl_easy_setopt(curl, CURLOPT_POSTFIELDS, "${escapeDoubleQuoted(body)}");` : ''}
 
     res = curl_easy_perform(curl);
     if(res != CURLE_OK)
@@ -233,19 +238,15 @@ xhr.addEventListener('readystatechange', function() {
 });
 
 xhr.open('${method}', '${url}');
-${Object.entries(activeHeaders)
-  .map(([k, v]) => `xhr.setRequestHeader('${k}', '${v}');`)
-  .join('\n')}
+${mapHeaders((k, v) => `xhr.setRequestHeader('${k}', '${v}');`)}
 
 xhr.send(${bodyType === 'none' ? 'null' : 'data'});`;
 
     case 'csharp_httpclient':
       return `using var client = new HttpClient();
 var request = new HttpRequestMessage(HttpMethod.${method}, "${url}");
-${Object.entries(activeHeaders)
-  .map(([k, v]) => `request.Headers.Add("${k}", "${v}");`)
-  .join('\n')}
-${body && bodyType !== 'none' ? `request.Content = new StringContent("${escapeDoubleQuoted(body)}", null, "${activeHeaders['Content-Type'] || 'text/plain'}");` : ''}
+${mapHeaders((k, v) => `request.Headers.Add("${k}", "${v}");`)}
+${hasBody ? `request.Content = new StringContent("${escapeDoubleQuoted(body)}", null, "${contentType}");` : ''}
 
 var response = await client.SendAsync(request);
 response.EnsureSuccessStatusCode();
@@ -254,10 +255,8 @@ Console.WriteLine(await response.Content.ReadAsStringAsync());`;
     case 'csharp_restsharp':
       return `var client = new RestClient("${url}");
 var request = new RestRequest(Method.${method});
-${Object.entries(activeHeaders)
-  .map(([k, v]) => `request.AddHeader("${k}", "${v}");`)
-  .join('\n')}
-${body && bodyType !== 'none' ? `request.AddParameter("${activeHeaders['Content-Type'] || 'text/plain'}", "${escapeDoubleQuoted(body)}", ParameterType.RequestBody);` : ''}
+${mapHeaders((k, v) => `request.AddHeader("${k}", "${v}");`)}
+${hasBody ? `request.AddParameter("${contentType}", "${escapeDoubleQuoted(body)}", ParameterType.RequestBody);` : ''}
 
 RestResponse response = await client.ExecuteAsync(request);
 Console.WriteLine(response.Content);`;
@@ -265,10 +264,8 @@ Console.WriteLine(response.Content);`;
     case 'java_asynchttpclient':
       return `AsyncHttpClient client = Dsl.asyncHttpClient();
 client.prepare("${method}", "${url}")
-  ${Object.entries(activeHeaders)
-    .map(([k, v]) => `.setHeader("${k}", "${v}")`)
-    .join('\n  ')}
-  ${body && bodyType !== 'none' ? `.setBody("${escapeDoubleQuoted(body)}")` : ''}
+  ${mapHeaders((k, v) => `.setHeader("${k}", "${v}")`, '\n  ')}
+  ${hasBody ? `.setBody("${escapeDoubleQuoted(body)}")` : ''}
   .execute()
   .toCompletableFuture()
   .thenAccept(s -> System.out.println(s.getResponseBody()))
@@ -280,10 +277,8 @@ client.close();`;
       return `HttpClient client = HttpClient.newHttpClient();
 HttpRequest request = HttpRequest.newBuilder()
   .uri(URI.create("${url}"))
-  .method("${method}", ${body && bodyType !== 'none' ? `HttpRequest.BodyPublishers.ofString("${escapeDoubleQuoted(body)}")` : 'HttpRequest.BodyPublishers.noBody()'})
-  ${Object.entries(activeHeaders)
-    .map(([k, v]) => `.setHeader("${k}", "${v}")`)
-    .join('\n  ')}
+  .method("${method}", ${hasBody ? `HttpRequest.BodyPublishers.ofString("${escapeDoubleQuoted(body)}")` : 'HttpRequest.BodyPublishers.noBody()'})
+  ${mapHeaders((k, v) => `.setHeader("${k}", "${v}")`, '\n  ')}
   .build();
 
 HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
@@ -291,24 +286,20 @@ System.out.println(response.body());`;
 
     case 'java_unirest':
       return `HttpResponse<String> response = Unirest.${method.toLowerCase()}("${url}")
-  ${Object.entries(activeHeaders)
-    .map(([k, v]) => `.header("${k}", "${v}")`)
-    .join('\n  ')}
-  ${body && bodyType !== 'none' ? `.body("${escapeDoubleQuoted(body)}")` : ''}
+  ${mapHeaders((k, v) => `.header("${k}", "${v}")`, '\n  ')}
+  ${hasBody ? `.body("${escapeDoubleQuoted(body)}")` : ''}
   .asString();
 
 System.out.println(response.getBody());`;
 
     case 'kotlin_okhttp':
       return `val client = OkHttpClient()
-val mediaType = "${activeHeaders['Content-Type'] || 'text/plain'}".toMediaType()
-val body = ${body && bodyType !== 'none' ? `"${escapeDoubleQuoted(body)}".toRequestBody(mediaType)` : '"".toRequestBody(null)'}
+val mediaType = "${contentType}".toMediaType()
+val body = ${hasBody ? `"${escapeDoubleQuoted(body)}".toRequestBody(mediaType)` : '"".toRequestBody(null)'}
 val request = Request.Builder()
   .url("${url}")
   .method("${method}", body)
-  ${Object.entries(activeHeaders)
-    .map(([k, v]) => `.addHeader("${k}", "${v}")`)
-    .join('\n  ')}
+  ${mapHeaders((k, v) => `.addHeader("${k}", "${v}")`, '\n  ')}
   .build()
 
 val response = client.newCall(request).execute()
@@ -316,7 +307,7 @@ println(response.body?.string())`;
     case 'javascript_fetch':
       const fetchHeaders = JSON.stringify(activeHeaders, null, 2);
       let fetchBody = '';
-      if (['POST', 'PUT', 'PATCH'].includes(method)) {
+      if (methodHasBody) {
         if (bodyType === 'json') fetchBody = `\n  body: JSON.stringify(${body || '{}'}),`;
         else if (bodyType === 'x-www-form-urlencoded') {
           const params = new URLSearchParams();
@@ -344,7 +335,7 @@ const data = await response.json();`;
         url: url,
         headers: activeHeaders,
       };
-      if (['POST', 'PUT', 'PATCH'].includes(method)) {
+      if (methodHasBody) {
         if (bodyType === 'json') axiosConfig.data = safeParse(body);
         else if (bodyType === 'x-www-form-urlencoded') {
           const params = new URLSearchParams();
@@ -369,7 +360,7 @@ console.log(response.data);`;
     case 'python_requests':
       let pyHeaders = JSON.stringify(activeHeaders, null, 4);
       let pyData = '';
-      if (['POST', 'PUT', 'PATCH'].includes(method)) {
+      if (methodHasBody) {
         if (bodyType === 'json') {
           const parsed = safeParse(body);
           pyData = `, json=${JSON.stringify(parsed, null, 4)}`;
@@ -405,14 +396,14 @@ import (
     "fmt"
     "net/http"
     "io/ioutil"
-    ${bodyType !== 'none' ? '"strings"' : ''}
+    ${hasBody ? '"strings"' : ''}
 )
 
 func main() {
     url := "${url}"
     method := "${method}"
 
-    ${bodyType !== 'none' ? `payload := strings.NewReader(\`${body.replace(/`/g, '` + "`" + `')}\`)` : 'var payload io.Reader'}
+    ${hasBody ? `payload := strings.NewReader(\`${body.replace(/`/g, '` + "`" + `')}\`)` : 'var payload io.Reader'}
 
     client := &http.Client{}
     req, err := http.NewRequest(method, url, payload)
@@ -421,9 +412,7 @@ func main() {
         return
     }
 
-    ${Object.entries(activeHeaders)
-      .map(([k, v]) => `req.Header.Add("${k}", "${v}")`)
-      .join('\n    ')}
+    ${mapHeaders((k, v) => `req.Header.Add("${k}", "${v}")`, '\n    ')}
 
     res, err := client.Do(req)
     if err != nil {
@@ -447,7 +436,7 @@ func main() {
         .replace(/:/g, ' =>');
       let phpOptions: string[] = [`'headers' => ${phpHeaders}`];
 
-      if (['POST', 'PUT', 'PATCH'].includes(method)) {
+      if (methodHasBody) {
         if (bodyType === 'json') {
           phpOptions.push(
             `'json' => ${JSON.stringify(safeParse(body), null, 4).replace(/\{/g, '[').replace(/\}/g, ']').replace(/:/g, ' =>')}`,
@@ -477,11 +466,9 @@ $response = $client->request('${method}', '${url}', [
 echo $response->getBody();`;
 
     case 'java_okhttp':
-      let javaHeaders = Object.entries(activeHeaders)
-        .map(([k, v]) => `.addHeader("${k}", "${v}")`)
-        .join('\n      ');
+      let javaHeaders = mapHeaders((k, v) => `.addHeader("${k}", "${v}")`, '\n      ');
       let javaBody = 'RequestBody.create(null, new byte[0])';
-      if (['POST', 'PUT', 'PATCH'].includes(method)) {
+      if (methodHasBody) {
         if (bodyType === 'json') {
           javaBody = `RequestBody.create(MediaType.parse("application/json"), "${escapeDoubleQuoted(body)}")`;
         } else if (bodyType === 'x-www-form-urlencoded') {
@@ -526,11 +513,9 @@ curl_setopt_array($curl, [
   CURLOPT_FOLLOWLOCATION => true,
   CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
   CURLOPT_CUSTOMREQUEST => '${method}',
-  ${body && bodyType !== 'none' ? `CURLOPT_POSTFIELDS => '${escapeSingleQuoted(body)}',` : ''}
+  ${hasBody ? `CURLOPT_POSTFIELDS => '${escapeSingleQuoted(body)}',` : ''}
   CURLOPT_HTTPHEADER => [
-    ${Object.entries(activeHeaders)
-      .map(([k, v]) => `'${k}: ${v}'`)
-      .join(',\n    ')}
+    ${mapHeaders((k, v) => `'${k}: ${v}'`, ',\n    ')}
   ],
 ]);
 
@@ -541,13 +526,12 @@ echo $response;`;
 
     case 'powershell_restmethod':
     case 'powershell_webrequest': {
-      const psHeaders = `$headers = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"\n${Object.entries(
-        activeHeaders,
-      )
-        .map(([k, v]) => `$headers.Add("${k}", "${v}")`)
-        .join('\n')}`;
-      const psBody = body && bodyType !== 'none' ? `$body = "${body.replace(/"/g, '`"')}"` : '';
-      const psBodyFlag = body && bodyType !== 'none' ? '-Body $body' : '';
+      const psHeaders = `$headers = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"\n${mapHeaders((k, v) => `$headers.Add("${k}", "${v}")`)}`;
+
+      const psBody = hasBody
+        ? `$body = "${body.replace(/`/g, '``').replace(/\$/g, '`$').replace(/"/g, '`"')}"`
+        : '';
+      const psBodyFlag = hasBody ? '-Body $body' : '';
 
       if (language === 'powershell_restmethod') {
         return `${psHeaders}\n\n${psBody}\n\n$response = Invoke-RestMethod '${url}' -Method '${method}' -Headers $headers ${psBodyFlag}\n$response | ConvertTo-Json`;
@@ -560,7 +544,7 @@ echo $response;`;
       return `import http.client
 
 conn = http.client.${pyUrl.protocol === 'https:' ? 'HTTPSConnection' : 'HTTPConnection'}("${pyUrl.host}")
-payload = ${body && bodyType !== 'none' ? `'''${body}'''` : "''"}
+payload = ${hasBody ? `'''${body}'''` : "''"}
 headers = ${JSON.stringify(activeHeaders, null, 4)}
 conn.request("${method}", "${pyUrl.pathname}${pyUrl.search}", payload, headers)
 res = conn.getresponse()
@@ -577,10 +561,8 @@ http = Net::HTTP.new(url.host, url.port)
 ${url.startsWith('https') ? 'http.use_ssl = true' : ''}
 
 request = Net::HTTP::${method.charAt(0) + method.slice(1).toLowerCase()}.new(url)
-${Object.entries(activeHeaders)
-  .map(([k, v]) => `request["${k}"] = "${v}"`)
-  .join('\n')}
-${body && bodyType !== 'none' ? `request.body = '${escapeSingleQuoted(body)}'` : ''}
+${mapHeaders((k, v) => `request["${k}"] = "${v}"`)}
+${hasBody ? `request.body = '${escapeSingleQuoted(body)}'` : ''}
 
 response = http.request(request)
 puts response.read_body`;
@@ -591,16 +573,14 @@ puts response.read_body`;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut headers = HeaderMap::new();
-    ${Object.entries(activeHeaders)
-      .map(([k, v]) => `headers.insert("${k.toLowerCase()}", HeaderValue::from_static("${v}"));`)
-      .join('\n    ')}
+    ${mapHeaders((k, v) => `headers.insert("${k.toLowerCase()}", HeaderValue::from_static("${v}"));`, '\n    ')}
 
     let client = reqwest::Client::builder()
         .build()?;
 
     let res = client.${method.toLowerCase()}("${url}")
         .headers(headers)
-        ${body && bodyType !== 'none' ? `.body("${escapeDoubleQuoted(body)}")` : ''}
+        ${hasBody ? `.body("${escapeDoubleQuoted(body)}")` : ''}
         .send()
         .await?;
 
@@ -612,17 +592,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
       return `import Foundation
 
 let headers = [
-  ${Object.entries(activeHeaders)
-    .map(([k, v]) => `"${k}": "${v}"`)
-    .join(',\n  ')}
+  ${mapHeaders((k, v) => `"${k}": "${v}"`, ',\n  ')}
 ]
 
-${body && bodyType !== 'none' ? `let postData = NSData(data: "${escapeDoubleQuoted(body)}".data(using: String.Encoding.utf8)!)` : ''}
+${hasBody ? `let postData = NSData(data: "${escapeDoubleQuoted(body)}".data(using: String.Encoding.utf8)!)` : ''}
 
 var request = URLRequest(url: URL(string: "${url}")!,timeoutInterval: Double.infinity)
 request.httpMethod = "${method}"
 request.allHTTPHeaderFields = headers
-${body && bodyType !== 'none' ? 'request.httpBody = postData as Data' : ''}
+${hasBody ? 'request.httpBody = postData as Data' : ''}
 
 let task = URLSession.shared.dataTask(with: request) { data, response, error in
   guard let data = data else {
@@ -638,19 +616,17 @@ task.resume()`;
       return `#import <Foundation/Foundation.h>
 
 NSDictionary *headers = @{
-  ${Object.entries(activeHeaders)
-    .map(([k, v]) => `@"${k}": @"${v}"`)
-    .join(',\n  ')}
+  ${mapHeaders((k, v) => `@"${k}": @"${v}"`, ',\n  ')}
 };
 
-${body && bodyType !== 'none' ? `NSData *postData = [[NSData alloc] initWithData:[@"${escapeDoubleQuoted(body)}" dataUsingEncoding:NSUTF8StringEncoding]];` : ''}
+${hasBody ? `NSData *postData = [[NSData alloc] initWithData:[@"${escapeDoubleQuoted(body)}" dataUsingEncoding:NSUTF8StringEncoding]];` : ''}
 
 NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:@"${url}"]
                                                        cachePolicy:NSURLRequestUseProtocolCachePolicy
                                                    timeoutInterval:10.0];
 [request setHTTPMethod:@"${method}"];
 [request setAllHTTPHeaderFields:headers];
-${body && bodyType !== 'none' ? '[request setHTTPBody:postData];' : ''}
+${hasBody ? '[request setHTTPBody:postData];' : ''}
 
 NSURLSession *session = [NSURLSession sharedSession];
 NSURLSessionDataTask *dataTask = [session dataTaskWithRequest:request
@@ -669,7 +645,7 @@ NSURLSessionDataTask *dataTask = [session dataTaskWithRequest:request
 
 (client/${method.toLowerCase()} "${url}"
   {:headers ${JSON.stringify(activeHeaders, null, 2)}
-   ${body && bodyType !== 'none' ? `:body "${escapeDoubleQuoted(body)}"` : ''}})`;
+   ${hasBody ? `:body "${escapeDoubleQuoted(body)}"` : ''}})`;
 
     case 'ocaml_cohttp':
       return `open Lwt
@@ -684,11 +660,9 @@ let setup_log () =
 let main () =
   let uri = Uri.of_string "${url}" in
   let headers = Header.of_list [
-    ${Object.entries(activeHeaders)
-      .map(([k, v]) => `("${k}", "${v}")`)
-      .join(';\n    ')}
+    ${mapHeaders((k, v) => `("${k}", "${v}")`, ';\n    ')}
   ] in
-  ${body && bodyType !== 'none' ? `let body = Cohttp_lwt.Body.of_string "${escapeDoubleQuoted(body)}" in` : 'let body = Cohttp_lwt.Body.empty in'}
+  ${hasBody ? `let body = Cohttp_lwt.Body.of_string "${escapeDoubleQuoted(body)}" in` : 'let body = Cohttp_lwt.Body.empty in'}
   Client.call ~headers ~body \`${method} uri >>= fun (resp, body) ->
   let code = resp |> Response.status |> Code.code_of_status in
   Printf.printf "Response code: %d\\n" code;
@@ -704,14 +678,12 @@ let () =
       return `library(httr)
 
 headers = c(
-  ${Object.entries(activeHeaders)
-    .map(([k, v]) => `"${k}" = "${v}"`)
-    .join(',\n  ')}
+  ${mapHeaders((k, v) => `"${k}" = "${v}"`, ',\n  ')}
 )
 
-${body && bodyType !== 'none' ? `body = "${escapeDoubleQuoted(body)}"` : ''}
+${hasBody ? `body = "${escapeDoubleQuoted(body)}"` : ''}
 
-res <- VERB("${method}", url = "${url}", add_headers(headers) ${body && bodyType !== 'none' ? ', body = body' : ''})
+res <- VERB("${method}", url = "${url}", add_headers(headers) ${hasBody ? ', body = body' : ''})
 
 cat(content(res, "text"))`;
 
@@ -722,13 +694,11 @@ import 'dart:convert';
 void main() async {
   var url = Uri.parse('${url}');
   var headers = {
-    ${Object.entries(activeHeaders)
-      .map(([k, v]) => `'${k}': '${escapeSingleQuoted(v)}'`)
-      .join(',\n    ')}
+    ${mapHeaders((k, v) => `'${k}': '${escapeSingleQuoted(v)}'`, ',\n    ')}
   };
 
   ${
-    ['POST', 'PUT', 'PATCH'].includes(method) && bodyType !== 'none'
+    hasBody
       ? `var response = await http.${method.toLowerCase()}(
     url,
     headers: headers,
@@ -746,13 +716,11 @@ void main() async {
 
 url = "${url}"
 headers = [
-  ${Object.entries(activeHeaders)
-    .map(([k, v]) => `{"${k}", "${escapeDoubleQuoted(v)}"}`)
-    .join(',\n  ')}
+  ${mapHeaders((k, v) => `{"${k}", "${escapeDoubleQuoted(v)}"}`, ',\n  ')}
 ]
 
 ${
-  ['POST', 'PUT', 'PATCH'].includes(method) && bodyType !== 'none'
+  hasBody
     ? `body = "${escapeDoubleQuoted(body)}"
 
 {:ok, response} = HTTPoison.${method.toLowerCase()}(url, body, headers)`
@@ -774,10 +742,8 @@ main = do
   let request
         = setRequestMethod "${method}"
         $ setRequestSecure ${url.startsWith('https') ? 'True' : 'False'}
-        ${Object.entries(activeHeaders)
-          .map(([k, v]) => `$ addRequestHeader "${k}" "${escapeDoubleQuoted(v)}"`)
-          .join('\n        ')}
-        ${['POST', 'PUT', 'PATCH'].includes(method) && bodyType !== 'none' ? `$ setRequestBodyLBS "${escapeDoubleQuoted(body)}"` : ''}
+        ${mapHeaders((k, v) => `$ addRequestHeader "${k}" "${escapeDoubleQuoted(v)}"`, '\n        ')}
+        ${hasBody ? `$ setRequestBodyLBS "${escapeDoubleQuoted(body)}"` : ''}
         $ parseRequest_ "${url}"
 
   response <- httpLBS request
@@ -789,13 +755,11 @@ main = do
 
 url = "${url}"
 headers = [
-    ${Object.entries(activeHeaders)
-      .map(([k, v]) => `"${k}" => "${escapeDoubleQuoted(v)}"`)
-      .join(',\n    ')}
+    ${mapHeaders((k, v) => `"${k}" => "${escapeDoubleQuoted(v)}"`, ',\n    ')}
 ]
 
 ${
-  ['POST', 'PUT', 'PATCH'].includes(method) && bodyType !== 'none'
+  hasBody
     ? `body = """${body.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"""
 
 response = HTTP.request("${method}", url, headers, body)`
@@ -813,19 +777,15 @@ local ltn12 = require("ltn12")
 
 local response_body = {}
 
-${['POST', 'PUT', 'PATCH'].includes(method) && bodyType !== 'none' ? `local request_body = [[${body}]]` : ''}
+${hasBody ? `local request_body = [[${body}]]` : ''}
 
 local res, code, response_headers = ${luaUrl.protocol === 'https:' ? 'https' : 'http'}.request{
   url = "${url}",
   method = "${method}",
   headers = {
-    ${Object.entries(activeHeaders)
-      .map(([k, v]) => `["${k}"] = "${escapeDoubleQuoted(v)}"`)
-      .join(
-        ',\n    ',
-      )}${['POST', 'PUT', 'PATCH'].includes(method) && bodyType !== 'none' ? `,\n    ["Content-Length"] = #request_body` : ''}
+    ${mapHeaders((k, v) => `["${k}"] = "${escapeDoubleQuoted(v)}"`, ',\n    ')}${hasBody ? `,\n    ["Content-Length"] = #request_body` : ''}
   },
-  ${['POST', 'PUT', 'PATCH'].includes(method) && bodyType !== 'none' ? 'source = ltn12.source.string(request_body),' : ''}
+  ${hasBody ? 'source = ltn12.source.string(request_body),' : ''}
   sink = ltn12.sink.table(response_body),
 }
 
@@ -843,10 +803,8 @@ my $ua = LWP::UserAgent->new;
 my $url = '${escapeSingleQuoted(url)}';
 
 my $req = HTTP::Request->new('${method}' => $url);
-${Object.entries(activeHeaders)
-  .map(([k, v]) => `$req->header('${k}' => '${escapeSingleQuoted(v)}');`)
-  .join('\n')}
-${['POST', 'PUT', 'PATCH'].includes(method) && bodyType !== 'none' ? `$req->content('${escapeSingleQuoted(body)}');` : ''}
+${mapHeaders((k, v) => `$req->header('${k}' => '${escapeSingleQuoted(v)}');`)}
+${hasBody ? `$req->content('${escapeSingleQuoted(body)}');` : ''}
 
 my $res = $ua->request($req);
 
@@ -865,10 +823,8 @@ val backend = DefaultSyncBackend()
 
 val request = basicRequest
   .method(Method("${method}"), uri"${url}")
-  ${Object.entries(activeHeaders)
-    .map(([k, v]) => `.header("${k}", "${escapeDoubleQuoted(v)}")`)
-    .join('\n  ')}
-  ${['POST', 'PUT', 'PATCH'].includes(method) && bodyType !== 'none' ? `.body("${escapeDoubleQuoted(body)}")` : ''}
+  ${mapHeaders((k, v) => `.header("${k}", "${escapeDoubleQuoted(v)}")`, '\n  ')}
+  ${hasBody ? `.body("${escapeDoubleQuoted(body)}")` : ''}
 
 val response = request.send(backend)
 

@@ -10,7 +10,7 @@
 
 import { validateInput } from '../shared';
 
-const PATTERN_SIZE_LIMIT = 1 * 1024 * 1024; // 1MB
+const PATTERN_SIZE_LIMIT = 10_000; // 10KB — shorter limit to mitigate ReDoS
 const TEST_STRING_SIZE_LIMIT = 10 * 1024 * 1024; // 10MB
 const MAX_MATCH_COUNT = 10_000;
 
@@ -110,7 +110,7 @@ export const testRegex = async (input: string): Promise<string> => {
   }
 
   if (pattern.length > PATTERN_SIZE_LIMIT) {
-    throw new Error('Pattern exceeds maximum size limit of 1MB');
+    throw new Error('Pattern exceeds maximum size limit of 10KB');
   }
 
   if (testString.length > TEST_STRING_SIZE_LIMIT) {

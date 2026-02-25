@@ -230,6 +230,62 @@ describe('subnetCalculator', () => {
       if (result.type !== 'ipv6' || !result.valid) throw new Error('unexpected');
       expect(result.expandedForm).toBe('2001:0db8:0000:0000:0000:0000:0000:0001');
     });
+
+    it('should identify link-local address type', () => {
+      const result = calculateSubnet({ address: 'fe80::1', cidr: 10, type: 'ipv6' });
+      expect(result.valid).toBe(true);
+      if (result.type !== 'ipv6' || !result.valid) throw new Error('unexpected');
+      expect(result.addressType).toBe('Link-Local');
+    });
+
+    it('should identify unique local address type', () => {
+      const result = calculateSubnet({ address: 'fd00::1', cidr: 48, type: 'ipv6' });
+      expect(result.valid).toBe(true);
+      if (result.type !== 'ipv6' || !result.valid) throw new Error('unexpected');
+      expect(result.addressType).toBe('Unique Local (ULA)');
+    });
+
+    it('should identify multicast address type', () => {
+      const result = calculateSubnet({ address: 'ff02::1', cidr: 128, type: 'ipv6' });
+      expect(result.valid).toBe(true);
+      if (result.type !== 'ipv6' || !result.valid) throw new Error('unexpected');
+      expect(result.addressType).toBe('Multicast');
+    });
+
+    it('should identify 6to4 address type', () => {
+      const result = calculateSubnet({ address: '2002::1', cidr: 16, type: 'ipv6' });
+      expect(result.valid).toBe(true);
+      if (result.type !== 'ipv6' || !result.valid) throw new Error('unexpected');
+      expect(result.addressType).toBe('6to4 Tunnel');
+    });
+
+    it('should identify Teredo address type', () => {
+      const result = calculateSubnet({ address: '2001:0000::1', cidr: 32, type: 'ipv6' });
+      expect(result.valid).toBe(true);
+      if (result.type !== 'ipv6' || !result.valid) throw new Error('unexpected');
+      expect(result.addressType).toBe('Teredo Tunnel');
+    });
+
+    it('should identify Global Unicast address type', () => {
+      const result = calculateSubnet({ address: '2600:1f18::1', cidr: 64, type: 'ipv6' });
+      expect(result.valid).toBe(true);
+      if (result.type !== 'ipv6' || !result.valid) throw new Error('unexpected');
+      expect(result.addressType).toBe('Global Unicast');
+    });
+
+    it('should identify unspecified address type', () => {
+      const result = calculateSubnet({ address: '::', cidr: 0, type: 'ipv6' });
+      expect(result.valid).toBe(true);
+      if (result.type !== 'ipv6' || !result.valid) throw new Error('unexpected');
+      expect(result.addressType).toBe('Unspecified (::)');
+    });
+
+    it('should handle compression with only single zero groups', () => {
+      const result = calculateSubnet({ address: '2001:db8:0:1:0:2:0:3', cidr: 128, type: 'ipv6' });
+      expect(result.valid).toBe(true);
+      if (result.type !== 'ipv6' || !result.valid) throw new Error('unexpected');
+      expect(result.compressedForm).toBeDefined();
+    });
   });
 
   // ─── Error Cases ─────────────────────────────────────────────────────────

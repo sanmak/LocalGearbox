@@ -294,5 +294,33 @@ describe('testRegex', () => {
       // flags and testString missing - should throw since testString is not a string
       await expect(testRegex(input)).rejects.toThrow();
     });
+
+    it('should handle zero-length match at end of string', async () => {
+      const input = JSON.stringify({ pattern: '(?=b|$)', flags: 'g', testString: 'ab' });
+      const result = JSON.parse(await testRegex(input));
+      expect(result.valid).toBe(true);
+      expect(result.matchCount).toBeGreaterThanOrEqual(1);
+    });
+
+    it('should reject pattern exceeding size limit', async () => {
+      const longPattern = 'a'.repeat(10_001);
+      const input = JSON.stringify({ pattern: longPattern, flags: '', testString: 'test' });
+      await expect(testRegex(input)).rejects.toThrow('Pattern exceeds maximum size limit');
+    });
+
+    it('should reject test string exceeding size limit', async () => {
+      const longString = 'x'.repeat(10_001);
+      const input = JSON.stringify({
+        pattern: longString,
+        flags: '',
+        testString: 'test',
+      });
+      await expect(testRegex(input)).rejects.toThrow('Pattern exceeds maximum size limit');
+    });
+
+    it('should reject non-string pattern', async () => {
+      const input = JSON.stringify({ pattern: 123, flags: '', testString: 'test' });
+      await expect(testRegex(input)).rejects.toThrow('pattern must be a string');
+    });
   });
 });
