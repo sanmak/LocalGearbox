@@ -37,7 +37,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v6 # v4.3.1
+        uses: actions/upload-artifact@v7 # v4.3.1
         with:
           name: smoke-test-results-${{ matrix.browser }}
           path: test-results/
@@ -75,7 +75,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v6 # v4.3.1
+        uses: actions/upload-artifact@v7 # v4.3.1
         with:
           name: e2e-results-${{ matrix.browser }}-${{ matrix.shard }}
           path: test-results/
@@ -83,7 +83,7 @@ jobs:
 
       - name: Upload HTML report
         if: always()
-        uses: actions/upload-artifact@v6 # v4.3.1
+        uses: actions/upload-artifact@v7 # v4.3.1
         with:
           name: playwright-report-${{ matrix.browser }}-${{ matrix.shard }}
           path: playwright-report/
@@ -116,7 +116,7 @@ jobs:
 
       - name: Upload accessibility results
         if: always()
-        uses: actions/upload-artifact@v6 # v4.3.1
+        uses: actions/upload-artifact@v7 # v4.3.1
         with:
           name: accessibility-results
           path: test-results/
@@ -150,7 +150,7 @@ jobs:
 
       - name: Upload visual test results
         if: always()
-        uses: actions/upload-artifact@v6 # v4.3.1
+        uses: actions/upload-artifact@v7 # v4.3.1
         with:
           name: visual-regression-results
           path: |
@@ -188,7 +188,7 @@ jobs:
 
       - name: Upload mobile test results
         if: always()
-        uses: actions/upload-artifact@v6 # v4.3.1
+        uses: actions/upload-artifact@v7 # v4.3.1
         with:
           name: mobile-results-${{ matrix.device }}
           path: test-results/
@@ -202,7 +202,7 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      - uses: actions/download-artifact@v7 # v4.1.7
+      - uses: actions/download-artifact@v8 # v4.1.7
         with:
           path: all-test-results
 
@@ -212,7 +212,7 @@ jobs:
           find all-test-results -name "*.json" -exec cp {} merged-results/ \;
 
       - name: Upload merged results
-        uses: actions/upload-artifact@v6 # v4.3.1
+        uses: actions/upload-artifact@v7 # v4.3.1
         with:
           name: merged-test-results
           path: merged-results/
@@ -228,7 +228,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6 # v4.1.1
 
-      - uses: actions/download-artifact@v7 # v4.1.7
+      - uses: actions/download-artifact@v8 # v4.1.7
         with:
           name: merged-test-results
           path: test-results
