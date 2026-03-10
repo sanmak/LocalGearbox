@@ -10,6 +10,8 @@
 
 import { validateInput, isValidXML, JSON_SIZE_LIMIT, XML_SIZE_LIMIT } from '../shared';
 
+export { testRegex } from './regex-tester';
+
 /**
  * Validates JSON and returns validation result
  */

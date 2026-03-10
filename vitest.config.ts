@@ -11,7 +11,7 @@ export default defineConfig({
   plugins: [react()],
   test: {
     environment: 'jsdom',
-    exclude: ['tests/e2e/**', 'node_modules/**', '.opencode/**', '.gemini/**'],
+    exclude: ['tests/e2e/**', 'node_modules/**', '.opencode/**', '.gemini/**', '.claude/**'],
     setupFiles: ['./tests/setup.ts'],
     globals: true,
     alias: {

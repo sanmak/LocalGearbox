@@ -22,6 +22,7 @@ import {
   // Validators
   validateJSON,
   validateXML,
+  testRegex,
   // Encoders
   processURL,
   encodeBase64,
@@ -41,6 +42,7 @@ import {
   generateUUID,
   epochToDate,
   dateToEpoch,
+  generateLoremIpsumText,
   // Text
   reverseString,
   stringToLines,
@@ -61,6 +63,7 @@ import {
   soaLookup,
   reverseDnsLookup,
   nameServerLookup,
+  subnetCalculator,
   // Workbenches
   processContractWorkbench,
   processArchitectureDiagram,
@@ -297,6 +300,47 @@ export const TOOLS: Record<string, Tool> = {
       },
     },
     process: validateXML,
+  },
+
+  'regex-tester': {
+    id: 'regex-tester',
+    name: 'Regex Tester',
+    category: 'validators',
+    description:
+      'Test regular expressions with real-time match highlighting, capture groups, and common pattern presets',
+    inputSchema: {
+      type: 'object',
+      description: 'JSON with pattern, flags, and testString fields',
+      properties: {
+        pattern: {
+          type: 'string',
+          description: 'Regular expression pattern',
+          maxLength: 1048576,
+        },
+        flags: {
+          type: 'string',
+          description: 'Regex flags (g, i, m, s, u, v)',
+        },
+        testString: {
+          type: 'string',
+          description: 'String to test the pattern against',
+          maxLength: 10485760,
+        },
+      },
+    },
+    outputSchema: {
+      type: 'object',
+      description: 'Test results with matches, positions, and capture groups',
+      properties: {
+        valid: { type: 'string' },
+        matchCount: { type: 'string' },
+        matches: {
+          type: 'array',
+          description: 'Array of match objects with fullMatch, index, groups',
+        },
+      },
+    },
+    process: testRegex,
   },
 
   'url-encoder-decoder': {
@@ -613,6 +657,43 @@ export const TOOLS: Record<string, Tool> = {
       description: 'Random UUID v4',
     },
     process: () => generateUUID(),
+  },
+
+  'lorem-ipsum': {
+    id: 'lorem-ipsum',
+    name: 'Lorem Ipsum Generator',
+    category: 'generators',
+    description:
+      'Generate placeholder Lorem Ipsum text in paragraphs, sentences, or words with configurable options',
+    inputSchema: {
+      type: 'object',
+      description: 'Lorem Ipsum generation configuration',
+      properties: {
+        mode: {
+          type: 'string',
+          description: 'Generation mode: paragraphs, sentences, or words',
+          required: true,
+        },
+        count: {
+          type: 'string',
+          description: 'Number of items to generate',
+          required: true,
+        },
+        startWithLorem: {
+          type: 'string',
+          description: 'Start with classic "Lorem ipsum dolor sit amet..."',
+        },
+        includeHtml: {
+          type: 'string',
+          description: 'Wrap output in HTML paragraph tags',
+        },
+      },
+    },
+    outputSchema: {
+      type: 'string',
+      description: 'Generated Lorem Ipsum text',
+    },
+    process: generateLoremIpsumText,
   },
 
   'jwt-decoder': {
@@ -1093,6 +1174,58 @@ export const TOOLS: Record<string, Tool> = {
       description: 'Delegation records in JSON format',
     },
     process: nameServerLookup,
+  },
+
+  'subnet-calculator': {
+    id: 'subnet-calculator',
+    name: 'Subnet Calculator',
+    category: 'dns',
+    description:
+      'IPv4/IPv6 subnet calculator with network address, broadcast, host range, subnet mask, wildcard mask, and binary representation',
+    inputSchema: {
+      type: 'object',
+      description: 'IP address, CIDR prefix length, and IP version (ipv4 or ipv6)',
+      properties: {
+        address: {
+          type: 'string',
+          description: 'IP address (IPv4 or IPv6)',
+          required: true,
+        },
+        cidr: {
+          type: 'string',
+          description: 'CIDR prefix length',
+          required: true,
+        },
+        type: {
+          type: 'string',
+          description: 'IP version: ipv4 or ipv6',
+          required: true,
+        },
+      },
+    },
+    outputSchema: {
+      type: 'object',
+      description: 'Subnet calculation results',
+      properties: {
+        networkAddress: {
+          type: 'string',
+          description: 'Network address',
+        },
+        broadcastAddress: {
+          type: 'string',
+          description: 'Broadcast address (IPv4 only)',
+        },
+        subnetMask: {
+          type: 'string',
+          description: 'Subnet mask (IPv4 only)',
+        },
+        totalHosts: {
+          type: 'string',
+          description: 'Total number of host addresses',
+        },
+      },
+    },
+    process: subnetCalculator,
   },
 
   // Testing Tools
@@ -1697,7 +1830,6 @@ export const TOOLS: Record<string, Tool> = {
     id: 'architecture-diagram',
     name: 'Architecture Diagram Generator',
     category: 'workbenches',
-    isDraft: true,
     description:
       'Professional architecture diagram generator for system design. Create stunning diagrams with drag-and-drop interface, multiple layout algorithms (hierarchical, force-directed, circular, grid, tree), cloud service icons (AWS, GCP, Azure), pre-built templates (microservices, serverless, monolithic, event-driven, hybrid-cloud, Kubernetes), and export to SVG, Mermaid, PlantUML. Includes diagram validation, complexity analysis, cycle detection, and auto-documentation generation. Perfect for architects and senior engineers designing scalable systems.',
     inputSchema: {
